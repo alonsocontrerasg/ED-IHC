@@ -219,9 +219,10 @@
               </div>
               <div class="status" id="key-status"></div>
               <div class="key-options" style="margin-top: 12px; display: flex; gap: 16px; justify-content: center; font-size: 18px;">
-                <label><input type="checkbox" id="key-opt-uppercase"> Mayúsculas</label>
-                <label><input type="checkbox" id="key-opt-accents"> Tildes</label>
-                <label><input type="checkbox" id="key-opt-numbers"> Números</label>
+                <label><input type="checkbox" id="key-opt-uppercase"> Más mayúsculas</label>
+                <label><input type="checkbox" id="key-opt-special"> Más caracteres especiales</label>
+                <label><input type="checkbox" id="key-opt-accents"> Más tildes</label>
+                <label><input type="checkbox" id="key-opt-numbers"> Más números</label>
               </div>
               <div class="controls-top">
                 <button id="btn-previous-key" class="btn-secondary big btn-interactive">Anterior</button>
@@ -233,7 +234,6 @@
             <div id="stage-free" class="stage hidden center">
               <h2 class="big">Práctica libre</h2>
               <p style="font-size:20px">Escribe libremente en el cuadro de texto.</p>
-              <div id="free-practice-phrase" class="big" style="margin-bottom: 12px; min-height: 40px; color: var(--accent);"></div>
               <div style="margin-top:8px">
                 <textarea id="free-text" rows="8" placeholder="Escribe, prueba mayúsculas, prueba backspace..."></textarea>
               </div>
@@ -577,12 +577,8 @@
       if (charSet === '') { // Default case if no options are selected
         charSet = 'asdfghjklñ';
       }
-      let newChar;
-      do {
-        newChar = charSet[Math.floor(Math.random() * charSet.length)];
-      } while (newChar === expected && charSet.length > 1);
 
-      return newChar;
+      return charSet[Math.floor(Math.random() * charSet.length)];
     }
     function highlightExpected(ch) {
       // Solo mostramos el cuadro con la letra, sin texto adicional
@@ -609,39 +605,17 @@
       }
     });
     keyNext.addEventListener('click', () => { prepareKeyExercise(); });
-    const phrases = [
-      'Hola Mundo', 
-      'Me gusta aprender', 
-      'Practicar es clave', 
-      'La vida es bella',
-      'El sol brilla hoy',
-      'La tecnología ayuda',
-      'Cada día es nuevo',
-      'Mi familia es genial',
-      'Quiero ser mejor',
-      'Confío en mis dedos',
-      // Frases con mayúsculas
-      'La Paciencia es una Virtud',
-      'Aprender a Programar es Divertido',
-      'El Respeto es la Base de Todo',
-      'La Vida te da Sorpresas',
-      'Nunca Dejes de Soñar'
-    ];
-    let currentPhrase = ''; let currentPool = [...phrases]; let phraseHistory = [];
-    const freePracticePhrase = $('#free-practice-phrase');
 
+    const phrases = ['Hola Mundo', 'Me gusta aprender', 'Practicar es clave', 'La vida es bella'];
+    let currentPhrase = ''; let currentPool = [...phrases]; let phraseHistory = [];
     function startFreePractice() {
-      if (currentPool.length === 0) currentPool = [...phrases.filter(p => p !== currentPhrase)];
-      
+      if (currentPool.length === 0) currentPool = [...phrases];
       const index = Math.floor(Math.random() * currentPool.length);
       const newPhrase = currentPool.splice(index, 1)[0];
-      
       if (currentPhrase) phraseHistory.push(currentPhrase);
       currentPhrase = newPhrase;
-      
       freeText.value = '';
       freeText.placeholder = 'Escribe: ' + currentPhrase;
-      freePracticePhrase.textContent = currentPhrase;
       freeStatus.innerHTML = '';
       speak('Escribe la frase: ' + currentPhrase);
     }
