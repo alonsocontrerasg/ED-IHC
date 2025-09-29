@@ -2,14 +2,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Entrenadoddddr Digital - Mouse y Teclado (Adultos Mayores)</title>
+  <title>Entrenador Digital - Mouse y Teclado (Adultos Mayores)</title>
   <style>
     :root{
-      --bg:#0b2545;
-      --card:#ffffff;
-      --accent:#1a73e8;
-      --success:#2e7d32;
-      --error:#c62828;
       --large:32px;
     }
     html,body{height:100%;margin:0;font-family:Segoe UI,Arial,Helvetica,sans-serif;background:var(--bg);color:var(--card)}
@@ -108,6 +103,29 @@
     }
 
     @media (max-width:900px){.practice{flex-direction:column}.right{width:auto}}
+
+    /* Color-blind friendly themes */
+    [data-theme="normal"] {
+      --bg: #0b2545;
+      --card: #ffffff;
+      --accent: #1a73e8;
+      --success: #1c9422;
+      --error: #c62828;
+    }
+    [data-theme="protanopia"] {
+      --bg: #636D97;
+      --card: #EDE6DE;
+      --accent: #5A7FBF;
+      --success: #2980b9; /* Strong Blue */
+      --error: #f1c40f;   /* Yellow */
+    }
+    [data-theme="deuteranopia"] {
+      --bg: #5D6E9E;
+      --card: #FADFE2;
+      --accent: #4F81C7;
+      --success: #00c49a; /* Cyan */
+      --error: #ffc107;   /* Yellow */
+    }
   </style>
 </head>
 <body style="font-size: 20px;">
@@ -147,6 +165,12 @@
           </div>
         </button>
       </div>
+      <div class="access" style="margin-top: 24px;">
+        <label>Modo de Color:</label>
+        <button id="color-normal" class="btn-secondary btn-interactive">Normal</button>
+        <button id="color-protanopia" class="btn-secondary btn-interactive">Protanopia</button>
+        <button id="color-deuteranopia" class="btn-secondary btn-interactive">Deuteranopia</button>
+      </div>
     </section>
 
     <div id="main-content" class="hidden">
@@ -160,6 +184,7 @@
             <label for="toggle-large">Texto grande</label>
             <input type="checkbox" id="toggle-large" checked="">
           </div>
+
         </div>
 
         <div class="practice">
@@ -317,6 +342,7 @@
     let state = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
     if (!state.mouse) state.mouse = { level: 1, score: 0 };
     if (!state.key) state.key = { level: 1, score: 0 };
+    if (!state.theme) state.theme = 'normal';
 
     function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); updateProgressUI(); }
     function resetState() { 
@@ -357,6 +383,21 @@
     }
     toggleLarge.addEventListener('change', applyLargeText);
     applyLargeText();
+
+    // --- Color Mode Logic ---
+    const btnColorNormal = $('#color-normal');
+    const btnColorProtanopia = $('#color-protanopia');
+    const btnColorDeuteranopia = $('#color-deuteranopia');
+
+    function setColorMode(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      state.theme = theme;
+      saveState();
+    }
+
+    btnColorNormal.addEventListener('click', () => setColorMode('normal'));
+    btnColorProtanopia.addEventListener('click', () => setColorMode('protanopia'));
+    btnColorDeuteranopia.addEventListener('click', () => setColorMode('deuteranopia'));
 
     function showMainMenu() {
       mainContent.classList.add('hidden');
@@ -603,6 +644,9 @@
     }
 
     window.addEventListener('load', () => {
+      // Apply saved theme or default
+      document.documentElement.setAttribute('data-theme', state.theme || 'normal');
+
       initSpeech();
       updateProgressUI();
       showMainMenu();
