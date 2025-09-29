@@ -93,6 +93,20 @@
       box-shadow: 0 6px 12px rgba(0,0,0,0.25);
     }
 
+    .board-menu {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      border-radius: 10px;
+    }
+
     @media (max-width:900px){.practice{flex-direction:column}.right{width:auto}}
   </style>
 </head>
@@ -161,6 +175,7 @@
                 <button id="btn-previous-mouse" class="btn-secondary big btn-interactive">Anterior</button>
                 <button id="btn-skip-mouse" class="btn-secondary big btn-interactive">Siguiente</button>
                 <button id="btn-reset" class="btn-secondary big btn-interactive">Reiniciar Progreso</button>
+                <button id="btn-fullscreen-mouse" class="btn-secondary big btn-interactive">Pantalla Completa</button>
               </div>
             </div>
 
@@ -178,6 +193,12 @@
                 <div class="keyboard" id="keyboard-visual" aria-hidden="true"></div>
               </div>
               <div class="status" id="key-status"></div>
+              <div class="key-options" style="margin-top: 12px; display: flex; gap: 16px; justify-content: center; font-size: 18px;">
+                <label><input type="checkbox" id="key-opt-uppercase"> Más mayúsculas</label>
+                <label><input type="checkbox" id="key-opt-special"> Más caracteres especiales</label>
+                <label><input type="checkbox" id="key-opt-accents"> Más tildes</label>
+                <label><input type="checkbox" id="key-opt-numbers"> Más números</label>
+              </div>
               <div class="controls-top">
                 <button id="btn-previous-key" class="btn-secondary big btn-interactive">Anterior</button>
                 <button id="btn-skip-key" class="btn-secondary big btn-interactive">Siguiente</button>
@@ -367,7 +388,16 @@
 
     $('#btn-previous-mouse').addEventListener('click', () => { startMouseExercise(); });
     $('#btn-skip-mouse').addEventListener('click', () => { state.mouse.score += 0; saveState(); spawnTarget(); });
-    $('#btn-reset').addEventListener('click', resetState);
+            $('#btn-reset').addEventListener('click', resetState);
+    $('#btn-fullscreen-mouse').addEventListener('click', () => {
+      if (mouseBoard.requestFullscreen) {
+        mouseBoard.requestFullscreen();
+      } else if (mouseBoard.webkitRequestFullscreen) { /* Safari */
+        mouseBoard.webkitRequestFullscreen();
+      } else if (mouseBoard.msRequestFullscreen) { /* IE11 */
+        mouseBoard.msRequestFullscreen();
+      }
+    });
     $('#btn-previous-key').addEventListener('click', () => { /* ... */ });
     $('#btn-skip-key').addEventListener('click', () => { /* ... */ });
     $('#btn-reset-key').addEventListener('click', resetState);
@@ -385,9 +415,34 @@
     let mouseTarget = null;
     let mouseAttempts = 0;
     function startMouseExercise() {
-      mouseBoard.innerHTML = ''; mouseStatus.textContent = 'Preparando objetivo...';
-      speak('Prepara tu mouse. Mueve el cursor y haz clic en el círculo que aparecerá.');
-      setTimeout(() => spawnTarget(), 5500);
+      mouseBoard.innerHTML = ''; // Clear the board
+      mouseStatus.textContent = 'Preparando...';
+      
+      // Create and show the menu
+      const menu = document.createElement('div');
+      menu.id = 'mouse-menu';
+      menu.className = 'board-menu';
+      menu.innerHTML = '<button id="btn-start-mouse-fs" class="btn-primary big">Iniciar Práctica en Pantalla Completa</button>';
+      mouseBoard.appendChild(menu);
+
+      speak('Presiona el botón para iniciar la práctica en pantalla completa.');
+
+      $('#btn-start-mouse-fs').addEventListener('click', () => {
+        // Hide menu
+        menu.style.display = 'none';
+
+        // Go fullscreen
+        if (mouseBoard.requestFullscreen) {
+          mouseBoard.requestFullscreen();
+        } else if (mouseBoard.webkitRequestFullscreen) { /* Safari */
+          mouseBoard.webkitRequestFullscreen();
+        } else if (mouseBoard.msRequestFullscreen) { /* IE11 */
+          mouseBoard.msRequestFullscreen();
+        }
+
+        // Start the exercise
+        spawnTarget();
+      });
     }
     function spawnTarget() {
       mouseBoard.innerHTML = '';
@@ -410,6 +465,7 @@
       mouseStatus.innerHTML = '<span class="positive">¡Muy bien!</span>';
       speak(getRandomFeedback());
       state.mouse.score++; if (state.mouse.score % 5 === 0) state.mouse.level++; saveState();
+      e.target.style.background = 'var(--success)';
       cleanupMouseHandlers();
       setTimeout(() => spawnTarget(), 900);
     }
@@ -445,10 +501,43 @@
     }
     function randomLetter() {
       const lvl = state.key.level || 1;
-      const easy = 'ASDFGHJKLÑ'; const medium = 'QWERTYUIOP'; const hard = 'ZXCVBNM';
-      if (lvl <= 2) return easy[Math.floor(Math.random() * easy.length)];
-      if (lvl <= 4) return (easy + medium)[Math.floor(Math.random() * (easy + medium).length)];
-      return (easy + medium + hard)[Math.floor(Math.random() * (easy + medium + hard).length)];
+      let easy = 'asdfghjklñ';
+      let medium = 'qwertyuiop';
+      let hard = 'zxcvbnm';
+
+      const useUppercase = $('#key-opt-uppercase').checked;
+      const useSpecial = $('#key-opt-special').checked;
+      const useAccents = $('#key-opt-accents').checked;
+      const useNumbers = $('#key-opt-numbers').checked; // New option
+
+      if (useUppercase) {
+        easy += 'ASDFGHJKLÑ';
+        medium += 'QWERTYUIOP';
+        hard += 'ZXCVBNM';
+      }
+
+      if (useSpecial) {
+        easy += '#$%()=.,*+@-_';
+      }
+
+      if (useAccents) {
+        easy += 'áéíóúüÁÉÍÓÚÜ';
+      }
+
+      if (useNumbers) { // New condition
+        easy += '0123456789';
+      }
+
+      let charSet = '';
+      if (lvl <= 2) charSet = easy;
+      else if (lvl <= 4) charSet = easy + medium;
+      else charSet = easy + medium + hard;
+      
+      if (charSet === '') { // Default case if no options are selected
+        charSet = 'asdfghjklñ';
+      }
+
+      return charSet[Math.floor(Math.random() * charSet.length)];
     }
     function highlightExpected(ch) {
       // Solo mostramos el cuadro con la letra, sin texto adicional
@@ -459,7 +548,7 @@
         keyStatus.innerHTML = '<span class="negative">Mayúscula activada.</span>';
         speak('Mayúscula activada');
       }
-      const pressed = e.key.toUpperCase();
+      const pressed = e.key;
       if (pressed === expected) {
         keyStatus.innerHTML = '<span class="positive">Correcto: ' + pressed + '</span>';
         speak('Correcto');
