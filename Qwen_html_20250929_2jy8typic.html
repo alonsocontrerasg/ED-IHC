@@ -1,0 +1,526 @@
+<html lang="es" style="--large: 38px;">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Entrenador Digital - Mouse y Teclado (Adultos Mayores)</title>
+  <style>
+    :root{
+      --bg:#0b2545;
+      --card:#ffffff;
+      --accent:#1a73e8;
+      --success:#2e7d32;
+      --error:#c62828;
+      --large:32px;
+    }
+    html,body{height:100%;margin:0;font-family:Segoe UI,Arial,Helvetica,sans-serif;background:var(--bg);color:var(--card)}
+    .app{max-width:1200px;margin:18px auto;padding:18px}
+    header{display:flex;align-items:center;gap:18px}
+    h1{font-size:36px;margin:0}
+    .card{background:rgba(255,255,255,0.06);padding:16px;border-radius:12px;margin-top:12px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    button{font-size:22px;padding:12px 18px;border-radius:10px;border:0;cursor:pointer}
+    .btn-primary{background:var(--accent);color:white}
+    .btn-secondary{background:transparent;color:var(--card);border:2px solid rgba(255,255,255,0.12)}
+    .big{font-size:var(--large)}
+    .center{text-align:center}
+    .hidden{display:none}
+    .practice{margin-top:16px;min-height:320px;display:flex;gap:12px}
+    .left{flex:1}
+    .right{width:360px}
+    .stage{background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;height:100%}
+    .target{width:70px;height:70px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--bg);font-weight:700;font-size:22px;position:absolute}
+    .board{position:relative;background:rgba(255,255,255,0.02);height:480px;border-radius:10px;padding:8px;overflow:hidden}
+    .keyboard{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
+    .key{background:rgba(255,255,255,0.9);color:var(--bg);padding:12px;border-radius:8px;text-align:center;font-weight:700;user-select:none}
+    .key.big{padding:18px;font-size:20px}
+    input[type=text]{font-size:28px;padding:14px;width:100%;border-radius:8px;border:0}
+    textarea{font-size:28px;padding:14px;width:100%;border-radius:8px;border:0}
+    .access{display:flex;gap:8px;align-items:center}
+    label{font-size:20px}
+    footer{margin-top:16px;font-size:16px;opacity:0.9}
+    .status{
+      margin-top:16px;
+      font-size:26px;
+      font-weight: bold;
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .positive{color:var(--success)}
+    .negative{color:var(--error)}
+    .help{background:rgba(255,255,255,0.03);padding:12px;border-radius:8px}
+    .progress{display:flex;gap:8px;align-items:center}
+    .star{width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06)}
+    .controls-top{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    
+    .header-logo {
+      width: 72px; height: 72px; border-radius: 12px; background: var(--card);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--bg); font-weight: 800; font-size: 28px;
+    }
+    .header-subtitle { opacity: 0.9; }
+
+    .menu-buttons{display:flex;flex-direction:row;gap:24px;margin:24px auto;align-items:stretch;justify-content:center;flex-wrap:wrap}
+    .menu-card{width:320px;border:2px solid rgba(255,255,255,0.1);border-radius:12px;padding:0;background:rgba(255,255,255,0.05);display:flex;flex-direction:column;align-items:center;text-align:center;color:white;cursor:pointer;transition:transform .2s,background .2s}
+    .menu-card:hover{transform:translateY(-5px);background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.25)}
+    .menu-card img{width:100%;height:180px;object-fit:cover;border-top-left-radius:10px;border-top-right-radius:10px}
+    .menu-card .card-content{padding:16px;flex-grow:1}
+    .menu-card h3{margin:0;font-size:28px}
+    .menu-card p{font-size:18px;opacity:.8;margin-top:8px}
+    .menu-card .card-icon{font-size:120px;padding-top:30px;height:180px;line-height:1.3}
+
+    .btn-interactive{padding-left:24px;padding-right:24px;background-color:rgba(255,255,255,0.08);border-width:1px;transition:background-color .2s,border-color .2s}
+    .btn-interactive:hover{background-color:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.7)}
+    
+    #btn-repeat-audio { display: flex; align-items: center; gap: 8px; font-size: 18px !important; }
+    #free-text { width: 100%; box-sizing: border-box; font-size: 24px; padding: 12px; border-radius: 8px; }
+
+    /* Estilo para la letra dentro de un cuadro */
+    .key-display {
+      display: inline-block;
+      min-width: 80px;
+      height: 80px;
+      background: var(--card);
+      color: var(--bg);
+      border: 3px solid var(--card);
+      border-radius: 12px;
+      font-size: 48px;
+      font-weight: bold;
+      line-height: 80px;
+      text-align: center;
+      vertical-align: middle;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+    }
+
+    @media (max-width:900px){.practice{flex-direction:column}.right{width:auto}}
+  </style>
+</head>
+<body style="font-size: 20px;">
+  <div class="app" role="application" aria-label="Entrenador Digital para manejo de mouse y teclado">
+    <header>
+      <div class="header-logo">ED</div>
+      <div>
+        <h1>Entrenador Digital — Mouse y Teclado</h1>
+        <div class="header-subtitle">Diseñado para adultos mayores · Modo offline · Texto grande y audio de ayuda</div>
+      </div>
+      <div style="flex:1"></div>
+      <button id="btn-home" class="btn-secondary hidden btn-interactive">Menú Principal</button>
+    </header>
+
+    <section id="stage-welcome" class="card center">
+      <h2 class="big">Modos de Práctica</h2>
+      <div class="menu-buttons">
+        <button id="start-mouse" class="menu-card">
+          <img src="mouse.jpg" alt="Ilustración de un mouse de computadora">
+          <div class="card-content">
+            <h3>Practicar Mouse</h3>
+            <p>Aprende a mover, hacer clic y apuntar con precisión.</p>
+          </div>
+        </button>
+        <button id="start-key" class="menu-card">
+          <img src="teclado.jpg" alt="Ilustración de un teclado de computadora">
+          <div class="card-content">
+            <h3>Practicar Teclado</h3>
+            <p>Familiarízate con las teclas y mejora tu velocidad.</p>
+          </div>
+        </button>
+        <button id="start-free" class="menu-card">
+          <div class="card-icon">✏️</div>
+          <div class="card-content">
+            <h3>Práctica Libre</h3>
+            <p>Usa el teclado y el mouse sin ejercicios guiados.</p>
+          </div>
+        </button>
+      </div>
+    </section>
+
+    <div id="main-content" class="hidden">
+      <section class="card">
+        <div class="controls">
+          <div style="flex:1"></div>
+          <div class="access">
+            <label for="toggle-audio">Audio</label>
+            <input type="checkbox" id="toggle-audio" checked="">
+            <button id="btn-repeat-audio" class="btn-secondary btn-interactive"><span>🔈</span><span>Repetir Audio</span></button>
+            <label for="toggle-large">Texto grande</label>
+            <input type="checkbox" id="toggle-large" checked="">
+          </div>
+        </div>
+
+        <div class="practice">
+          <div class="left">
+            <div id="stage-mouse" class="stage hidden">
+              <div class="center">
+                <h2 class="big">Ejercicio: clic sobre el objetivo</h2>
+                <p id="mouse-instruction" style="font-size:20px;opacity:0.95">Sigue las instrucciones.</p>
+              </div>
+              <div class="board" id="mouse-board" tabindex="0" aria-label="Tablero de práctica de mouse"></div>
+              <div class="status" id="mouse-status"></div>
+              <div class="controls-top">
+                <button id="btn-previous-mouse" class="btn-secondary big btn-interactive">Anterior</button>
+                <button id="btn-skip-mouse" class="btn-secondary big btn-interactive">Siguiente</button>
+                <button id="btn-reset" class="btn-secondary big btn-interactive">Reiniciar Progreso</button>
+              </div>
+            </div>
+
+            <div id="stage-key" class="stage hidden">
+              <div class="center">
+                <h2 class="big">Ejercicio: presiona la tecla indicada</h2>
+                <!-- Solo el cuadro con la letra, sin texto adicional -->
+                <div id="key-instruction" style="margin-top:16px;"></div>
+              </div>
+              <div style="margin-top:12px">
+                <div style="display:flex;gap:8px;margin-bottom:12px">
+                  <div style="flex:1"><input id="typing-input" type="text" placeholder="Escribe aquí" aria-label="Entrada para practicar teclado"></div>
+                  <button id="key-next" class="btn-primary big">Empezar</button>
+                </div>
+                <div class="keyboard" id="keyboard-visual" aria-hidden="true"></div>
+              </div>
+              <div class="status" id="key-status"></div>
+              <div class="controls-top">
+                <button id="btn-previous-key" class="btn-secondary big btn-interactive">Anterior</button>
+                <button id="btn-skip-key" class="btn-secondary big btn-interactive">Siguiente</button>
+                <button id="btn-reset-key" class="btn-secondary big btn-interactive">Reiniciar Progreso</button>
+              </div>
+            </div>
+
+            <div id="stage-free" class="stage hidden center">
+              <h2 class="big">Práctica libre</h2>
+              <p style="font-size:20px">Escribe libremente en el cuadro de texto.</p>
+              <div style="margin-top:8px">
+                <textarea id="free-text" rows="8" placeholder="Escribe, prueba mayúsculas, prueba backspace..."></textarea>
+              </div>
+              <div class="status" id="free-status"></div>
+              <div class="controls-top">
+                 <button id="btn-previous-free" class="btn-secondary big btn-interactive">Anterior</button>
+                 <button id="btn-skip-free" class="btn-secondary big btn-interactive">Siguiente</button>
+                 <button id="btn-reset-free" class="btn-secondary big btn-interactive">Reiniciar Progreso</button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="right">
+            <div class="help">
+              <h3 class="big">Ayuda rápida</h3>
+              <ul style="font-size:20px;line-height:1.6">
+                <li>El cursor se mueve cuando mueves el mouse.</li>
+                <li>Para hacer clic, presiona el botón izquierdo del ratón.</li>
+                <li>Si todo sale en mayúsculas, revisa la tecla <strong>Bloq Mayús</strong>.</li>
+              </ul>
+            </div>
+            <div style="margin-top:12px" class="card">
+              <h4 class="big">Progreso</h4>
+              <div class="progress" id="progress-stars"><div class="star">☆</div><div class="star">☆</div><div class="star">☆</div><div class="star">☆</div><div class="star">☆</div></div>
+              <div id="progress-text" style="margin-top:8px;font-size:18px">Puntos Totales: 0</div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <div>Este archivo funciona sin conexión.</div>
+    </footer>
+  </div>
+
+  <script>
+    const audioEnabledDefault = true;
+    const largeTextDefault = true;
+    let lastSpokenText = '';
+    let preferredVoice = null;
+    const positiveFeedback = ['¡Muy bien!', '¡Excelente!', '¡Correcto!', '¡Eso es!', '¡Perfecto!'];
+
+    const $ = (s) => document.querySelector(s);
+
+    function speak(text) {
+      const toggle = $('#toggle-audio');
+      if (!toggle.checked || !text) return;
+      lastSpokenText = text;
+      if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'es-ES';
+        if (preferredVoice) u.voice = preferredVoice;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      }
+    }
+
+    function getRandomFeedback() {
+      return positiveFeedback[Math.floor(Math.random() * positiveFeedback.length)];
+    }
+
+    function initSpeech() {
+      if (!('speechSynthesis' in window)) return;
+
+      const setVoice = () => {
+        const voices = speechSynthesis.getVoices();
+        
+        // Lista de nombres comunes de voces masculinas en español
+        const maleVoiceNames = [
+          'Carlos', 'Miguel', 'Pablo', 'Jorge', 'Diego', 'Antonio',
+          'es-ES-Standard-B',
+          'es-ES-Neural2-B',
+          'Microsoft Pablo - Spanish (Spain)',
+          'Google español'
+        ];
+
+        let voice = null;
+        for (const name of maleVoiceNames) {
+          voice = voices.find(v => 
+            v.lang.startsWith('es-') && 
+            (v.name.includes(name) || v.name === name)
+          );
+          if (voice) break;
+        }
+
+        // Fallback: primera voz en español si no hay masculina
+        if (!voice) {
+          voice = voices.find(v => v.lang.startsWith('es-'));
+        }
+
+        preferredVoice = voice;
+      };
+
+      if (speechSynthesis.getVoices().length > 0) {
+        setVoice();
+      } else {
+        speechSynthesis.onvoiceschanged = () => {
+          setVoice();
+          speechSynthesis.onvoiceschanged = null;
+        };
+      }
+    }
+
+    const STATE_KEY = 'entrenador_progreso_v1';
+    let state = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
+    if (!state.mouse) state.mouse = { level: 1, score: 0 };
+    if (!state.key) state.key = { level: 1, score: 0 };
+
+    function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); updateProgressUI(); }
+    function resetState() { 
+        if(confirm('¿Desea reiniciar todo el progreso?')){
+            state = { mouse: { level: 1, score: 0 }, key: { level: 1, score: 0 } }; 
+            saveState(); 
+            speak('Progreso reiniciado');
+        }
+    }
+
+    const stageWelcome = $('#stage-welcome');
+    const mainContent = $('#main-content');
+    const btnHome = $('#btn-home');
+    const btnStartMouse = $('#start-mouse');
+    const btnStartKey = $('#start-key');
+    const btnStartFree = $('#start-free');
+
+    const stageMouse = $('#stage-mouse');
+    const stageKey = $('#stage-key');
+    const stageFree = $('#stage-free');
+    const mouseBoard = $('#mouse-board');
+    const mouseStatus = $('#mouse-status');
+    const keyStatus = $('#key-status');
+    const typingInput = $('#typing-input');
+    const keyNext = $('#key-next');
+    const freeText = $('#free-text');
+    const freeStatus = $('#free-status');
+    const toggleLarge = $('#toggle-large');
+    const progressStars = $('#progress-stars');
+    const progressText = $('#progress-text');
+    const btnRepeatAudio = $('#btn-repeat-audio');
+
+    $('#toggle-audio').checked = audioEnabledDefault;
+    toggleLarge.checked = largeTextDefault;
+    function applyLargeText() {
+      document.documentElement.style.setProperty('--large', toggleLarge.checked ? '38px' : '32px');
+      document.body.style.fontSize = toggleLarge.checked ? '20px' : '16px';
+    }
+    toggleLarge.addEventListener('change', applyLargeText);
+    applyLargeText();
+
+    function showMainMenu() {
+      mainContent.classList.add('hidden');
+      stageWelcome.classList.remove('hidden');
+      btnHome.classList.add('hidden');
+      window.speechSynthesis.cancel();
+      cleanupMouseHandlers();
+      showStage('');
+      speak('Elige un modo de práctica.');
+    }
+
+    function showPracticeView(mode) {
+      stageWelcome.classList.add('hidden');
+      mainContent.classList.remove('hidden');
+      btnHome.classList.remove('hidden');
+      showStage(mode);
+    }
+
+    btnStartMouse.addEventListener('click', () => { showPracticeView('mouse'); startMouseExercise(); });
+    btnStartKey.addEventListener('click', () => { showPracticeView('key'); prepareKeyExercise(); });
+    btnStartFree.addEventListener('click', () => { showPracticeView('free'); startFreePractice(); });
+    btnHome.addEventListener('click', showMainMenu);
+
+    btnRepeatAudio.addEventListener('click', () => {
+      if (lastSpokenText) {
+        speak(lastSpokenText);
+      }
+    });
+
+    $('#btn-previous-mouse').addEventListener('click', () => { startMouseExercise(); });
+    $('#btn-skip-mouse').addEventListener('click', () => { state.mouse.score += 0; saveState(); spawnTarget(); });
+    $('#btn-reset').addEventListener('click', resetState);
+    $('#btn-previous-key').addEventListener('click', () => { /* ... */ });
+    $('#btn-skip-key').addEventListener('click', () => { /* ... */ });
+    $('#btn-reset-key').addEventListener('click', resetState);
+    $('#btn-previous-free').addEventListener('click', () => { /* ... */ });
+    $('#btn-skip-free').addEventListener('click', () => { startFreePractice(); });
+    $('#btn-reset-free').addEventListener('click', resetState);
+
+    function showStage(s) {
+      [stageMouse, stageKey, stageFree].forEach(el => el.classList.add('hidden'));
+      if (s === 'mouse') stageMouse.classList.remove('hidden');
+      if (s === 'key') stageKey.classList.remove('hidden');
+      if (s === 'free') stageFree.classList.remove('hidden');
+    }
+
+    let mouseTarget = null;
+    let mouseAttempts = 0;
+    function startMouseExercise() {
+      mouseBoard.innerHTML = ''; mouseStatus.textContent = 'Preparando objetivo...';
+      speak('Prepara tu mouse. Mueve el cursor y haz clic en el círculo que aparecerá.');
+      setTimeout(() => spawnTarget(), 5500);
+    }
+    function spawnTarget() {
+      mouseBoard.innerHTML = '';
+      const t = document.createElement('div');
+      t.className = 'target'; t.textContent = 'Clic';
+      const r = mouseBoard.getBoundingClientRect();
+      const w = Math.max(70, Math.min(140, r.width * 0.15));
+      t.style.width = w + 'px'; t.style.height = w + 'px'; t.style.fontSize = Math.floor(w * 0.28) + 'px';
+      const x = Math.random() * (r.width - w - 12) + 6;
+      const y = Math.random() * (r.height - w - 12) + 6;
+      t.style.left = x + 'px'; t.style.top = y + 'px';
+      mouseBoard.appendChild(t);
+      mouseTarget = t; mouseAttempts = 0;
+      speak('Haz clic en el círculo.');
+      t.addEventListener('click', onTargetClick);
+      mouseBoard.addEventListener('click', onBoardClick);
+    }
+    function onTargetClick(e) {
+      e.stopPropagation();
+      mouseStatus.innerHTML = '<span class="positive">¡Muy bien!</span>';
+      speak(getRandomFeedback());
+      state.mouse.score++; if (state.mouse.score % 5 === 0) state.mouse.level++; saveState();
+      cleanupMouseHandlers();
+      setTimeout(() => spawnTarget(), 900);
+    }
+    function onBoardClick(e) {
+      if (e.target === mouseBoard) {
+        mouseAttempts++;
+        mouseStatus.innerHTML = '<span class="negative">Intenta otra vez.</span>';
+        speak('Apunta al círculo y haz clic.');
+        if (mouseAttempts >= 4) { mouseStatus.innerHTML = '<span class="negative">Haré el objetivo más grande.</span>'; adjustTargetForElder(); }
+      }
+    }
+    function adjustTargetForElder() {
+      if (!mouseTarget) return;
+      const newSize = Math.min(200, mouseTarget.offsetWidth * 1.5);
+      mouseTarget.style.width = newSize + 'px'; mouseTarget.style.height = newSize + 'px'; mouseTarget.style.fontSize = Math.floor(newSize * 0.3) + 'px';
+    }
+    function cleanupMouseHandlers() {
+      if (mouseTarget) mouseTarget.removeEventListener('click', onTargetClick);
+      mouseBoard.removeEventListener('click', onBoardClick);
+    }
+
+    let expected = '';
+    let letterHistory = [];
+    function buildKeyboardVisual() { /* ... */ }
+    buildKeyboardVisual();
+    function prepareKeyExercise() {
+      typingInput.value = ''; keyStatus.textContent = '';
+      if (expected) letterHistory.push(expected);
+      expected = randomLetter();
+      highlightExpected(expected);
+      speak('Presiona la tecla ' + expected);
+      keyNext.textContent = 'Siguiente';
+    }
+    function randomLetter() {
+      const lvl = state.key.level || 1;
+      const easy = 'ASDFGHJKLÑ'; const medium = 'QWERTYUIOP'; const hard = 'ZXCVBNM';
+      if (lvl <= 2) return easy[Math.floor(Math.random() * easy.length)];
+      if (lvl <= 4) return (easy + medium)[Math.floor(Math.random() * (easy + medium).length)];
+      return (easy + medium + hard)[Math.floor(Math.random() * (easy + medium + hard).length)];
+    }
+    function highlightExpected(ch) {
+      // Solo mostramos el cuadro con la letra, sin texto adicional
+      $('#key-instruction').innerHTML = '<span class="key-display">' + ch + '</span>';
+    }
+    typingInput.addEventListener('keydown', (e) => {
+      if (e.getModifierState && e.getModifierState('CapsLock')) {
+        keyStatus.innerHTML = '<span class="negative">Mayúscula activada.</span>';
+        speak('Mayúscula activada');
+      }
+      const pressed = e.key.toUpperCase();
+      if (pressed === expected) {
+        keyStatus.innerHTML = '<span class="positive">Correcto: ' + pressed + '</span>';
+        speak('Correcto');
+        state.key.score++; if (state.key.score % 5 === 0) state.key.level++; saveState();
+        letterHistory.push(expected);
+        expected = randomLetter();
+        highlightExpected(expected);
+        setTimeout(() => speak('Ahora: ' + expected), 400);
+        e.preventDefault();
+      } else if (e.key.length === 1 && e.key.match(/[a-zA-ZñÑ]/)) {
+        keyStatus.innerHTML = '<span class="negative">Incorrecto. Intenta: ' + expected + '</span>';
+        speak('Esa no es. Intenta de nuevo.');
+      }
+    });
+    keyNext.addEventListener('click', () => { prepareKeyExercise(); });
+
+    const phrases = ['Hola Mundo', 'Me gusta aprender', 'Practicar es clave', 'La vida es bella'];
+    let currentPhrase = ''; let currentPool = [...phrases]; let phraseHistory = [];
+    function startFreePractice() {
+      if (currentPool.length === 0) currentPool = [...phrases];
+      const index = Math.floor(Math.random() * currentPool.length);
+      const newPhrase = currentPool.splice(index, 1)[0];
+      if (currentPhrase) phraseHistory.push(currentPhrase);
+      currentPhrase = newPhrase;
+      freeText.value = '';
+      freeText.placeholder = 'Escribe: ' + currentPhrase;
+      freeStatus.innerHTML = '';
+      speak('Escribe la frase: ' + currentPhrase);
+    }
+    let lastTyped = '';
+    freeText.addEventListener('input', (e) => {
+      const typed = e.target.value;
+      if (typed.length < lastTyped.length) { lastTyped = typed; return; }
+      if (typed === currentPhrase) {
+        freeStatus.innerHTML = '<span class="positive">¡Frase correcta!</span>';
+        speak('Correcto. Pulsa Siguiente para otra frase.');
+      } else if (!currentPhrase.startsWith(typed)) {
+        freeStatus.innerHTML = '<span class="negative">Cuidado, intenta de nuevo.</span>';
+        speak('Intenta de nuevo');
+      }
+      lastTyped = typed;
+    });
+
+    function updateProgressUI() {
+      progressStars.innerHTML = '';
+      const total = (state.mouse.score || 0) + (state.key.score || 0);
+      const stars = Math.min(5, Math.floor(total / 5));
+      for (let i = 0; i < 5; i++) {
+        const s = document.createElement('div'); s.className = 'star'; s.textContent = i < stars ? '★' : '☆'; progressStars.appendChild(s);
+      }
+      progressText.textContent = `Puntos Totales: ${total}`;
+    }
+
+    window.addEventListener('load', () => {
+      initSpeech();
+      updateProgressUI();
+      showMainMenu();
+    });
+
+    window.addEventListener('beforeunload', saveState);
+  </script>
+
+</body>
+</html>
