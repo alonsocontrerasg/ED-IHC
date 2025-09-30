@@ -184,13 +184,14 @@
     <div id="main-content" class="hidden">
       <section class="card">
         <div class="controls">
+          <button id="btn-repeat-audio" class="btn-secondary btn-interactive"><span>🔈</span><span>Repetir Audio</span></button>
           <div style="flex:1"></div>
           <div class="access">
             <label for="toggle-audio">Audio</label>
             <input type="checkbox" id="toggle-audio" checked="">
-            <button id="btn-repeat-audio" class="btn-secondary btn-interactive"><span>🔈</span><span>Repetir Audio</span></button>
-            <label for="toggle-large">Texto grande</label>
-            <input type="checkbox" id="toggle-large" checked="">
+            <label>Tamaño de texto:</label>
+            <button id="btn-decrease-font" class="btn-secondary btn-interactive" aria-label="Reducir tamaño de texto">A-</button>
+            <button id="btn-increase-font" class="btn-secondary btn-interactive" aria-label="Aumentar tamaño de texto">A+</button>
           </div>
 
         </div>
@@ -205,8 +206,6 @@
               <div class="board" id="mouse-board" tabindex="0" aria-label="Tablero de práctica de mouse"></div>
               <div class="status" id="mouse-status"></div>
               <div class="controls-top">
-                <button id="btn-previous-mouse" class="btn-secondary big btn-interactive">Anterior</button>
-                <button id="btn-skip-mouse" class="btn-secondary big btn-interactive">Siguiente</button>
                 <button id="btn-reset" class="btn-secondary big btn-interactive">Reiniciar Progreso</button>
                 <button id="btn-fullscreen-mouse" class="btn-secondary big btn-interactive">Pantalla Completa</button>
               </div>
@@ -226,11 +225,7 @@
                 <div class="keyboard" id="keyboard-visual" aria-hidden="true"></div>
               </div>
               <div class="status" id="key-status"></div>
-              <div class="key-options" style="margin-top: 12px; display: flex; gap: 16px; justify-content: center; font-size: 18px;">
-                <label><input type="checkbox" id="key-opt-uppercase"> Mayúsculas</label>
-                <label><input type="checkbox" id="key-opt-accents"> Tildes</label>
-                <label><input type="checkbox" id="key-opt-numbers"> Números</label>
-              </div>
+
               <div class="controls-top">
                 <button id="btn-previous-key" class="btn-secondary big btn-interactive">Anterior</button>
                 <button id="btn-skip-key" class="btn-secondary big btn-interactive">Siguiente</button>
@@ -263,10 +258,15 @@
                 <li>Si todo sale en mayúsculas, revisa la tecla <strong>Bloq Mayús</strong>.</li>
               </ul>
             </div>
-            <div style="margin-top:12px" class="card">
-              <h4 class="big">Progreso</h4>
-              <div class="progress" id="progress-stars"><div class="star">☆</div><div class="star">☆</div><div class="star">☆</div><div class="star">☆</div><div class="star">☆</div></div>
-              <div id="progress-text" style="margin-top:8px;font-size:18px">Puntos Totales: 0</div>
+            <div id="levels-card" style="margin-top:12px" class="card hidden">
+              <h4 id="level-card-title" class="big">Nivel</h4>
+              <div id="level-selector" class="controls" style="justify-content: center; gap: 12px; margin-top: 8px;">
+                <button class="btn-secondary btn-interactive level-btn" data-level="1">1</button>
+                <button class="btn-secondary btn-interactive level-btn" data-level="2">2</button>
+                <button class="btn-secondary btn-interactive level-btn" data-level="3">3</button>
+                <button class="btn-secondary btn-interactive level-btn" data-level="4">4</button>
+                <button class="btn-secondary btn-interactive level-btn" data-level="5">5</button>
+              </div>
             </div>
           </aside>
         </div>
@@ -278,411 +278,448 @@
     </footer>
   </div>
 
-  <script>
-    const audioEnabledDefault = true;
-    const largeTextDefault = true;
-    let lastSpokenText = '';
-    let preferredVoice = null;
-    const positiveFeedback = ['¡Muy bien!', '¡Excelente!', '¡Correcto!', '¡Eso es!', '¡Perfecto!'];
-
-    const $ = (s) => document.querySelector(s);
-
-    function speak(text) {
-      const toggle = $('#toggle-audio');
-      if (!toggle.checked || !text) return;
-      lastSpokenText = text;
-      if ('speechSynthesis' in window) {
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'es-ES';
-        if (preferredVoice) u.voice = preferredVoice;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(u);
+    <script>
+      // =====================================
+      // 1. STATE MANAGEMENT
+      // =====================================
+      const STATE_KEY = 'entrenador_progreso_v1';
+      let state = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
+      if (!state.mouse) state.mouse = { level: 1 };
+      if (!state.key) state.key = { level: 1 };
+      if (!state.theme) state.theme = 'normal';
+      if (!state.fontSize) state.fontSize = 20; // Default font size
+  
+      function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+      function resetState() { 
+          if(confirm('¿Desea reiniciar todo el progreso?')){
+              state = { mouse: { level: 1 }, key: { level: 1 } }; 
+              saveState(); 
+              speak('Progreso reiniciado');
+              if(document.querySelector('#levels-card').classList.contains('hidden') === false) {
+                  updateLevelUI();
+              }
+          }
       }
-    }
-
-    function getRandomFeedback() {
-      return positiveFeedback[Math.floor(Math.random() * positiveFeedback.length)];
-    }
-
-    function initSpeech() {
-      if (!('speechSynthesis' in window)) return;
-
-      const setVoice = () => {
-        const voices = speechSynthesis.getVoices();
-        
-        // Lista de nombres comunes de voces masculinas en español
-        const maleVoiceNames = [
-          'Carlos', 'Miguel', 'Pablo', 'Jorge', 'Diego', 'Antonio',
-          'es-ES-Standard-B',
-          'es-ES-Neural2-B',
-          'Microsoft Pablo - Spanish (Spain)',
-          'Google español'
-        ];
-
-        let voice = null;
-        for (const name of maleVoiceNames) {
-          voice = voices.find(v => 
-            v.lang.startsWith('es-') && 
-            (v.name.includes(name) || v.name === name)
-          );
-          if (voice) break;
+  
+      // =====================================
+      // 2. DOM ELEMENTS
+      // =====================================
+      const $ = (s) => document.querySelector(s);
+      const stageWelcome = $('#stage-welcome');
+      const mainContent = $('#main-content');
+      const btnHome = $('#btn-home');
+      const btnStartMouse = $('#start-mouse');
+      const btnStartKey = $('#start-key');
+      const btnStartFree = $('#start-free');
+      const stageMouse = $('#stage-mouse');
+      const stageKey = $('#stage-key');
+      const stageFree = $('#stage-free');
+      const mouseBoard = $('#mouse-board');
+      const mouseStatus = $('#mouse-status');
+      const keyStatus = $('#key-status');
+      const typingInput = $('#typing-input');
+      const keyNext = $('#key-next');
+      const freeText = $('#free-text');
+      const freeStatus = $('#free-status');
+      const btnRepeatAudio = $('#btn-repeat-audio');
+      const levelsCard = $('#levels-card');
+      const levelCardTitle = $('#level-card-title');
+  
+      // =====================================
+      // 3. SPEECH SYNTHESIS
+      // =====================================
+      const audioEnabledDefault = true;
+      let lastSpokenText = '';
+      let preferredVoice = null;
+      const positiveFeedback = ['¡Muy bien!', '¡Excelente!', '¡Correcto!', '¡Eso es!', '¡Perfecto!'];
+  
+      function speak(text) {
+        const toggle = $('#toggle-audio');
+        if (!toggle.checked || !text) return;
+        lastSpokenText = text;
+        if ('speechSynthesis' in window) {
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = 'es-ES';
+          if (preferredVoice) u.voice = preferredVoice;
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(u);
         }
-
-        // Fallback: primera voz en español si no hay masculina
-        if (!voice) {
-          voice = voices.find(v => v.lang.startsWith('es-'));
-        }
-
-        preferredVoice = voice;
-      };
-
-      if (speechSynthesis.getVoices().length > 0) {
-        setVoice();
-      } else {
-        speechSynthesis.onvoiceschanged = () => {
-          setVoice();
-          speechSynthesis.onvoiceschanged = null;
+      }
+  
+      function getRandomFeedback() {
+        return positiveFeedback[Math.floor(Math.random() * positiveFeedback.length)];
+      }
+  
+      function initSpeech() {
+        if (!('speechSynthesis' in window)) return;
+        const setVoice = () => {
+          const voices = speechSynthesis.getVoices();
+          const maleVoiceNames = ['Carlos', 'Miguel', 'Pablo', 'Jorge', 'Diego', 'Antonio', 'es-ES-Standard-B', 'es-ES-Neural2-B', 'Microsoft Pablo - Spanish (Spain)', 'Google español'];
+          let voice = null;
+          for (const name of maleVoiceNames) {
+            voice = voices.find(v => v.lang.startsWith('es-') && (v.name.includes(name) || v.name === name));
+            if (voice) break;
+          }
+          if (!voice) {
+            voice = voices.find(v => v.lang.startsWith('es-'));
+          }
+          preferredVoice = voice;
         };
-      }
-    }
-
-    const STATE_KEY = 'entrenador_progreso_v1';
-    let state = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
-    if (!state.mouse) state.mouse = { level: 1, score: 0 };
-    if (!state.key) state.key = { level: 1, score: 0 };
-    if (!state.theme) state.theme = 'normal';
-
-    function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); updateProgressUI(); }
-    function resetState() { 
-        if(confirm('¿Desea reiniciar todo el progreso?')){
-            state = { mouse: { level: 1, score: 0 }, key: { level: 1, score: 0 } }; 
-            saveState(); 
-            speak('Progreso reiniciado');
+        if (speechSynthesis.getVoices().length > 0) {
+          setVoice();
+        } else {
+          speechSynthesis.onvoiceschanged = () => {
+            setVoice();
+            speechSynthesis.onvoiceschanged = null;
+          };
         }
-    }
-
-    const stageWelcome = $('#stage-welcome');
-    const mainContent = $('#main-content');
-    const btnHome = $('#btn-home');
-    const btnStartMouse = $('#start-mouse');
-    const btnStartKey = $('#start-key');
-    const btnStartFree = $('#start-free');
-
-    const stageMouse = $('#stage-mouse');
-    const stageKey = $('#stage-key');
-    const stageFree = $('#stage-free');
-    const mouseBoard = $('#mouse-board');
-    const mouseStatus = $('#mouse-status');
-    const keyStatus = $('#key-status');
-    const typingInput = $('#typing-input');
-    const keyNext = $('#key-next');
-    const freeText = $('#free-text');
-    const freeStatus = $('#free-status');
-    const toggleLarge = $('#toggle-large');
-    const progressStars = $('#progress-stars');
-    const progressText = $('#progress-text');
-    const btnRepeatAudio = $('#btn-repeat-audio');
-
-    $('#toggle-audio').checked = audioEnabledDefault;
-    toggleLarge.checked = largeTextDefault;
-    function applyLargeText() {
-      document.documentElement.style.setProperty('--large', toggleLarge.checked ? '38px' : '32px');
-      document.body.style.fontSize = toggleLarge.checked ? '20px' : '16px';
-    }
-    toggleLarge.addEventListener('change', applyLargeText);
-    applyLargeText();
-
-    // --- Color Mode Logic ---
-    const btnColorNormal = $('#color-normal');
-    const btnColorProtanopia = $('#color-protanopia');
-    const btnColorDeuteranopia = $('#color-deuteranopia');
-    const btnColorAcromatopsia = $('#color-acromatopsia');
-
-    function setColorMode(theme) {
-      document.documentElement.setAttribute('data-theme', theme);
-      state.theme = theme;
-      saveState();
-    }
-
-    btnColorNormal.addEventListener('click', () => setColorMode('normal'));
-    btnColorProtanopia.addEventListener('click', () => setColorMode('protanopia'));
-    btnColorDeuteranopia.addEventListener('click', () => setColorMode('deuteranopia'));
-    btnColorAcromatopsia.addEventListener('click', () => setColorMode('acromatopsia'));
-
-    function showMainMenu() {
-      mainContent.classList.add('hidden');
-      stageWelcome.classList.remove('hidden');
-      btnHome.classList.add('hidden');
-      window.speechSynthesis.cancel();
-      cleanupMouseHandlers();
-      showStage('');
-      speak('Elige un modo de práctica.');
-    }
-
-    function showPracticeView(mode) {
-      stageWelcome.classList.add('hidden');
-      mainContent.classList.remove('hidden');
-      btnHome.classList.remove('hidden');
-      showStage(mode);
-    }
-
-    btnStartMouse.addEventListener('click', () => { showPracticeView('mouse'); startMouseExercise(); });
-    btnStartKey.addEventListener('click', () => { showPracticeView('key'); prepareKeyExercise(); });
-    btnStartFree.addEventListener('click', () => { showPracticeView('free'); startFreePractice(); });
-    btnHome.addEventListener('click', showMainMenu);
-
-    btnRepeatAudio.addEventListener('click', () => {
-      if (lastSpokenText) {
-        speak(lastSpokenText);
       }
-    });
-
-    $('#btn-previous-mouse').addEventListener('click', () => { startMouseExercise(); });
-    $('#btn-skip-mouse').addEventListener('click', () => { state.mouse.score += 0; saveState(); spawnTarget(); });
-            $('#btn-reset').addEventListener('click', resetState);
-    $('#btn-fullscreen-mouse').addEventListener('click', () => {
-      if (mouseBoard.requestFullscreen) {
-        mouseBoard.requestFullscreen();
-      } else if (mouseBoard.webkitRequestFullscreen) { /* Safari */
-        mouseBoard.webkitRequestFullscreen();
-      } else if (mouseBoard.msRequestFullscreen) { /* IE11 */
-        mouseBoard.msRequestFullscreen();
+  
+      function getSpokenChar(char) {
+          if (char.length !== 1) return char;
+          const accents = {
+              'á': 'a con tilde', 'é': 'e con tilde', 'í': 'i con tilde', 'ó': 'o con tilde', 'ú': 'u con tilde', 'ü': 'u con diéresis',
+              'Á': 'A con tilde mayúscula', 'É': 'E con tilde mayúscula', 'Í': 'I con tilde mayúscula', 'Ó': 'O con tilde mayúscula', 'Ú': 'U con tilde mayúscula', 'Ü': 'U con diéresis mayúscula'
+          };
+          if (accents[char]) return accents[char];
+          if (char === char.toUpperCase() && char.toLowerCase() !== char) return char + ' mayúscula';
+          const specialChars = {
+              '.': 'punto', ',': 'coma', ';': 'punto y coma', ':': 'dos puntos', '-': 'guion', '_': 'guion bajo',
+              '¡': 'signo de exclamación de apertura', '!': 'signo de exclamación',
+              '¿': 'signo de interrogación de apertura', '?': 'signo de interrogación',
+              '@': 'arroba', '#': 'numeral', '$': 'signo de pesos', '%': 'porcentaje', '&': 'y comercial',
+              '/': 'barra', '(': 'paréntesis de apertura', ')': 'paréntesis de cierre',
+              '=': 'signo de igual', '+': 'signo de más', '*': 'asterisco', '[': 'corchete de apertura', ']': 'corchete de cierre',
+              '{': 'llave de apertura', '}': 'llave de cierre'
+          };
+          return specialChars[char] || char;
       }
-    });
-    $('#btn-previous-key').addEventListener('click', () => { /* ... */ });
-    $('#btn-skip-key').addEventListener('click', () => { /* ... */ });
-    $('#btn-reset-key').addEventListener('click', resetState);
-    $('#btn-previous-free').addEventListener('click', () => { /* ... */ });
-    $('#btn-skip-free').addEventListener('click', () => { startFreePractice(); });
-    $('#btn-reset-free').addEventListener('click', resetState);
-
-    function showStage(s) {
-      [stageMouse, stageKey, stageFree].forEach(el => el.classList.add('hidden'));
-      if (s === 'mouse') stageMouse.classList.remove('hidden');
-      if (s === 'key') stageKey.classList.remove('hidden');
-      if (s === 'free') stageFree.classList.remove('hidden');
-    }
-
-    let mouseTarget = null;
-    let mouseAttempts = 0;
-    function startMouseExercise() {
-      mouseBoard.innerHTML = ''; // Clear the board
-      mouseStatus.textContent = 'Preparando...';
-      
-      // Create and show the menu
-      const menu = document.createElement('div');
-      menu.id = 'mouse-menu';
-      menu.className = 'board-menu';
-      menu.innerHTML = '<button id="btn-start-mouse-fs" class="btn-primary big">Iniciar Práctica en Pantalla Completa</button>';
-      mouseBoard.appendChild(menu);
-
-      speak('Presiona el botón para iniciar la práctica en pantalla completa.');
-
-      $('#btn-start-mouse-fs').addEventListener('click', () => {
-        // Hide menu
-        menu.style.display = 'none';
-
-        // Go fullscreen
-        if (mouseBoard.requestFullscreen) {
-          mouseBoard.requestFullscreen();
-        } else if (mouseBoard.webkitRequestFullscreen) { /* Safari */
-          mouseBoard.webkitRequestFullscreen();
-        } else if (mouseBoard.msRequestFullscreen) { /* IE11 */
-          mouseBoard.msRequestFullscreen();
+  
+      // =====================================
+      // 4. CORE APP & UI LOGIC
+      // =====================================
+      let currentPracticeMode = ''; // Can be 'mouse' or 'key'
+  
+      function showMainMenu() {
+        mainContent.classList.add('hidden');
+        stageWelcome.classList.remove('hidden');
+        btnHome.classList.add('hidden');
+        window.speechSynthesis.cancel();
+        cleanupMouseHandlers();
+        showStage('');
+        speak('Elige un modo de práctica.');
+      }
+  
+      function showPracticeView(mode) {
+        currentPracticeMode = mode;
+        stageWelcome.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+        btnHome.classList.remove('hidden');
+        showStage(mode);
+      }
+  
+      function showStage(s) {
+        [stageMouse, stageKey, stageFree].forEach(el => el.classList.add('hidden'));
+        levelsCard.classList.add('hidden');
+        if (s === 'mouse') {
+          stageMouse.classList.remove('hidden');
+          levelsCard.classList.remove('hidden');
+          levelCardTitle.textContent = 'Nivel de Mouse';
+          updateLevelUI();
         }
-
-        // Start the exercise
-        spawnTarget();
-      });
-    }
-    function spawnTarget() {
-      mouseBoard.innerHTML = '';
-      const t = document.createElement('div');
-      t.className = 'target'; t.textContent = 'Clic';
-      const r = mouseBoard.getBoundingClientRect();
-      const w = Math.max(70, Math.min(140, r.width * 0.15));
-      t.style.width = w + 'px'; t.style.height = w + 'px'; t.style.fontSize = Math.floor(w * 0.28) + 'px';
-      const x = Math.random() * (r.width - w - 12) + 6;
-      const y = Math.random() * (r.height - w - 12) + 6;
-      t.style.left = x + 'px'; t.style.top = y + 'px';
-      mouseBoard.appendChild(t);
-      mouseTarget = t; mouseAttempts = 0;
-      speak('Haz clic en el círculo.');
-      t.addEventListener('click', onTargetClick);
-      mouseBoard.addEventListener('click', onBoardClick);
-    }
-    function onTargetClick(e) {
-      e.stopPropagation();
-      mouseStatus.innerHTML = '<span class="positive">¡Muy bien!</span>';
-      speak(getRandomFeedback());
-      state.mouse.score++; if (state.mouse.score % 5 === 0) state.mouse.level++; saveState();
-      e.target.style.background = 'var(--success)';
-      cleanupMouseHandlers();
-      setTimeout(() => spawnTarget(), 900);
-    }
-    function onBoardClick(e) {
-      if (e.target === mouseBoard) {
-        mouseAttempts++;
-        mouseStatus.innerHTML = '<span class="negative">Intenta otra vez.</span>';
-        speak('Apunta al círculo y haz clic.');
-        if (mouseAttempts >= 4) { mouseStatus.innerHTML = '<span class="negative">Haré el objetivo más grande.</span>'; adjustTargetForElder(); }
+        if (s === 'key') {
+          stageKey.classList.remove('hidden');
+          levelsCard.classList.remove('hidden');
+          levelCardTitle.textContent = 'Nivel de Teclado';
+          updateLevelUI();
+        }
+        if (s === 'free') {
+          stageFree.classList.remove('hidden');
+        }
       }
-    }
-    function adjustTargetForElder() {
-      if (!mouseTarget) return;
-      const newSize = Math.min(200, mouseTarget.offsetWidth * 1.5);
-      mouseTarget.style.width = newSize + 'px'; mouseTarget.style.height = newSize + 'px'; mouseTarget.style.fontSize = Math.floor(newSize * 0.3) + 'px';
-    }
-    function cleanupMouseHandlers() {
-      if (mouseTarget) mouseTarget.removeEventListener('click', onTargetClick);
-      mouseBoard.removeEventListener('click', onBoardClick);
-    }
-
-    let expected = '';
-    let letterHistory = [];
-    function buildKeyboardVisual() { /* ... */ }
-    buildKeyboardVisual();
-    function prepareKeyExercise() {
-      typingInput.value = ''; keyStatus.textContent = '';
-      if (expected) letterHistory.push(expected);
-      expected = randomLetter();
-      highlightExpected(expected);
-      speak('Presiona la tecla ' + expected);
-      keyNext.textContent = 'Siguiente';
-    }
-    function randomLetter() {
-      const lvl = state.key.level || 1;
-      let easy = 'asdfghjklñ';
-      let medium = 'qwertyuiop';
-      let hard = 'zxcvbnm';
-
-      const useUppercase = $('#key-opt-uppercase').checked;
-      const useAccents = $('#key-opt-accents').checked;
-      const useNumbers = $('#key-opt-numbers').checked; // New option
-
-      if (useUppercase) {
-        easy += 'ASDFGHJKLÑ';
-        medium += 'QWERTYUIOP';
-        hard += 'ZXCVBNM';
+  
+      function updateLevelUI() {
+          if (!currentPracticeMode || (currentPracticeMode !== 'mouse' && currentPracticeMode !== 'key')) return;
+          const currentLevel = state[currentPracticeMode].level || 1;
+          document.querySelectorAll('.level-btn').forEach(btn => {
+              if (parseInt(btn.dataset.level) === currentLevel) {
+                  btn.classList.add('btn-primary');
+                  btn.classList.remove('btn-secondary');
+              } else {
+                  btn.classList.add('btn-secondary');
+                  btn.classList.remove('btn-primary');
+              }
+          });
       }
-
-      if (useAccents) {
-        easy += 'áéíóúüÁÉÍÓÚÜ';
+  
+      const MIN_FONT_SIZE = 16;
+      const MAX_FONT_SIZE = 28;
+      const FONT_STEP = 2;
+      function applyFontSize() {
+        const size = state.fontSize || 20;
+        document.body.style.fontSize = size + 'px';
+        document.documentElement.style.setProperty('--large', (size * 1.9) + 'px');
       }
-
-      if (useNumbers) { // New condition
-        easy += '0123456789';
+  
+      function setColorMode(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        state.theme = theme;
+        saveState();
       }
-
-      let charSet = '';
-      if (lvl <= 2) charSet = easy;
-      else if (lvl <= 4) charSet = easy + medium;
-      else charSet = easy + medium + hard;
-      
-      if (charSet === '') { // Default case if no options are selected
-        charSet = 'asdfghjklñ';
+  
+      // =====================================
+      // 5. MOUSE EXERCISE
+      // =====================================
+      let mouseTarget = null;
+      let mouseAttempts = 0;
+  
+      function startMouseExercise() {
+        mouseBoard.innerHTML = '';
+        mouseStatus.textContent = 'Preparando...';
+        const menu = document.createElement('div');
+        menu.id = 'mouse-menu';
+        menu.className = 'board-menu';
+        menu.innerHTML = '<button id="btn-start-mouse-fs" class="btn-primary big">Iniciar Práctica</button>';
+        mouseBoard.appendChild(menu);
+        speak('Presiona el botón Iniciar Práctica para comenzar.');
+        $('#btn-start-mouse-fs').addEventListener('click', () => {
+          menu.style.display = 'none';
+          spawnTarget();
+        });
       }
-
-      let nextLetter;
-      const lastLetter = letterHistory.length > 0 ? letterHistory[letterHistory.length - 1] : null;
-      do {
-        nextLetter = charSet[Math.floor(Math.random() * charSet.length)];
-      } while (charSet.length > 1 && nextLetter === lastLetter);
-
-      return nextLetter;
-    }
-    function highlightExpected(ch) {
-      // Solo mostramos el cuadro con la letra, sin texto adicional
-      $('#key-instruction').innerHTML = '<span class="key-display">' + ch + '</span>';
-    }
-    typingInput.addEventListener('keydown', (e) => {
-      if (e.getModifierState && e.getModifierState('CapsLock')) {
-        keyStatus.innerHTML = '<span class="negative">Mayúscula activada.</span>';
-        speak('Mayúscula activada');
+  
+      function spawnTarget() {
+        mouseBoard.innerHTML = '';
+        const t = document.createElement('div');
+        t.className = 'target';
+        t.textContent = 'Clic';
+        const r = mouseBoard.getBoundingClientRect();
+        const baseWidth = Math.max(70, Math.min(140, r.width * 0.15));
+        const level = state.mouse.level || 1;
+        const reductionFactors = [1.0, 0.85, 0.70, 0.55, 0.45];
+        const factor = reductionFactors[level - 1] || 0.45;
+        const w = Math.max(20, baseWidth * factor);
+        t.style.width = w + 'px';
+        t.style.height = w + 'px';
+        t.style.fontSize = Math.floor(w * 0.28) + 'px';
+        const x = Math.random() * (r.width - w - 12) + 6;
+        const y = Math.random() * (r.height - w - 12) + 6;
+        t.style.left = x + 'px';
+        t.style.top = y + 'px';
+        mouseBoard.appendChild(t);
+        mouseTarget = t;
+        mouseAttempts = 0;
+        speak('Haz clic en el círculo.');
+        t.addEventListener('click', onTargetClick);
+        mouseBoard.addEventListener('click', onBoardClick);
       }
-      const pressed = e.key;
-      if (pressed === expected) {
-        keyStatus.innerHTML = '<span class="positive">Correcto: ' + pressed + '</span>';
-        speak('Correcto');
-        state.key.score++; if (state.key.score % 5 === 0) state.key.level++; saveState();
-        letterHistory.push(expected);
+  
+      function onTargetClick(e) {
+        e.stopPropagation();
+        mouseStatus.innerHTML = '<span class="positive">¡Muy bien!</span>';
+        speak(getRandomFeedback());
+        saveState();
+        e.target.style.background = 'var(--success)';
+        cleanupMouseHandlers();
+        setTimeout(() => spawnTarget(), 900);
+      }
+  
+      function onBoardClick(e) {
+        if (e.target === mouseBoard) {
+          mouseAttempts++;
+          mouseStatus.innerHTML = '<span class="negative">Intenta otra vez.</span>';
+          speak('Apunta al círculo y haz clic.');
+          if (mouseAttempts >= 4) {
+            mouseStatus.innerHTML = '<span class="negative">Haré el objetivo más grande.</span>';
+            adjustTargetForElder();
+          }
+        }
+      }
+  
+      function adjustTargetForElder() {
+        if (!mouseTarget) return;
+        const newSize = Math.min(200, mouseTarget.offsetWidth * 1.5);
+        mouseTarget.style.width = newSize + 'px';
+        mouseTarget.style.height = newSize + 'px';
+        mouseTarget.style.fontSize = Math.floor(newSize * 0.3) + 'px';
+      }
+  
+      function cleanupMouseHandlers() {
+        if (mouseTarget) mouseTarget.removeEventListener('click', onTargetClick);
+        mouseBoard.removeEventListener('click', onBoardClick);
+      }
+  
+      // =====================================
+      // 6. KEYBOARD EXERCISE
+      // =====================================
+      let expected = '';
+      let letterHistory = [];
+  
+      function buildKeyboardVisual() { /* ... */ }
+      buildKeyboardVisual();
+  
+      function prepareKeyExercise() {
+        typingInput.value = '';
+        keyStatus.textContent = '';
+        if (expected) letterHistory.push(expected);
         expected = randomLetter();
         highlightExpected(expected);
-        setTimeout(() => speak('Ahora: ' + expected), 400);
-        e.preventDefault();
-      } else if (e.key.length === 1 && e.key.match(/[a-zA-ZñÑ]/)) {
-        keyStatus.innerHTML = '<span class="negative">Incorrecto. Intenta: ' + expected + '</span>';
-        speak('Esa no es. Intenta de nuevo.');
+        speak('Presiona la tecla ' + getSpokenChar(expected));
+        keyNext.textContent = 'Siguiente';
       }
-    });
-    keyNext.addEventListener('click', () => { prepareKeyExercise(); });
-
-    const phrases = [
-      'Hola Mundo', 
-      'Me gusta aprender', 
-      'Practicar es clave', 
-      'La vida es bella',
-      'El sol brilla hoy',
-      'La tecnología nos conecta',
-      'Cada día es una nueva oportunidad',
-      'Aprender a usar el computador es útil',
-      'La paciencia es una virtud',
-      'Disfruta de las pequeñas cosas',
-      // Dificultad aumentada
-      'La Vida Es Un Viaje, No Un Destino',
-      'El Conocimiento Es Poder',
-      'La Imaginación Es Más Importante Que El Saber',
-      'Aprender Es Crecer Cada Día',
-      'Nunca Es Tarde Para Empezar Algo Nuevo'
-    ];
-    let currentPhrase = ''; let currentPool = [...phrases]; let phraseHistory = [];
-    function startFreePractice() {
-      if (currentPool.length === 0) currentPool = [...phrases];
-      const index = Math.floor(Math.random() * currentPool.length);
-      const newPhrase = currentPool.splice(index, 1)[0];
-      if (currentPhrase) phraseHistory.push(currentPhrase);
-      currentPhrase = newPhrase;
-      freeText.value = '';
-      $('#phrase-display').textContent = currentPhrase;
-      freeText.placeholder = 'Escribe la frase de arriba...';
-      freeStatus.innerHTML = '';
-      speak('Escribe la frase: ' + currentPhrase);
-    }
-    let lastTyped = '';
-    freeText.addEventListener('input', (e) => {
-      const typed = e.target.value;
-      if (typed.length < lastTyped.length) { lastTyped = typed; return; }
-      if (typed === currentPhrase) {
-        freeStatus.innerHTML = '<span class="positive">¡Frase correcta!</span>';
-        speak('Correcto. Pulsa Siguiente para otra frase.');
-      } else if (!currentPhrase.startsWith(typed)) {
-        freeStatus.innerHTML = '<span class="negative">Cuidado, intenta de nuevo.</span>';
-        speak('Intenta de nuevo');
+  
+      function randomLetter() {
+        const level = state.key.level || 1;
+        let charSet = 'abcdefghijklmnñopqrstuvwxyz';
+        if (level >= 2) charSet += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        if (level >= 3) charSet += 'áéíóúüÁÉÍÓÚÜ';
+        if (level >= 4) charSet += '0123456789';
+        if (level >= 5) charSet += '.,;:-_¡!¿?@#$%&/()=+*[]{}';
+        let nextLetter;
+        const lastLetter = letterHistory.length > 0 ? letterHistory[letterHistory.length - 1] : null;
+        do {
+          nextLetter = charSet[Math.floor(Math.random() * charSet.length)];
+        } while (charSet.length > 1 && nextLetter === lastLetter);
+        return nextLetter;
       }
-      lastTyped = typed;
-    });
-
-    function updateProgressUI() {
-      progressStars.innerHTML = '';
-      const total = (state.mouse.score || 0) + (state.key.score || 0);
-      const stars = Math.min(5, Math.floor(total / 5));
-      for (let i = 0; i < 5; i++) {
-        const s = document.createElement('div'); s.className = 'star'; s.textContent = i < stars ? '★' : '☆'; progressStars.appendChild(s);
+  
+      function highlightExpected(ch) {
+        $('#key-instruction').innerHTML = '<span class="key-display">' + ch + '</span>';
       }
-      progressText.textContent = `Puntos Totales: ${total}`;
-    }
-
-    window.addEventListener('load', () => {
-      // Apply saved theme or default
-      document.documentElement.setAttribute('data-theme', state.theme || 'normal');
-
-      initSpeech();
-      updateProgressUI();
-      showMainMenu();
-    });
-
-    window.addEventListener('beforeunload', saveState);
-  </script>
-
+  
+      // =====================================
+      // 7. FREE PRACTICE EXERCISE
+      // =====================================
+      const phrases = ['Hola Mundo', 'Me gusta aprender', 'Practicar es clave', 'La vida es bella', 'El sol brilla hoy', 'La tecnología nos conecta', 'Cada día es una nueva oportunidad', 'Aprender a usar el computador es útil', 'La paciencia es una virtud', 'Disfruta de las pequeñas cosas', 'La Vida Es Un Viaje, No Un Destino', 'El Conocimiento Es Poder', 'La Imaginación Es Más Importante Que El Saber', 'Aprender Es Crecer Cada Día', 'Nunca Es Tarde Para Empezar Algo Nuevo'];
+      let currentPhrase = '';
+      let currentPool = [...phrases];
+      let phraseHistory = [];
+      let lastTyped = '';
+  
+      function startFreePractice() {
+        if (currentPool.length === 0) currentPool = [...phrases];
+        const index = Math.floor(Math.random() * currentPool.length);
+        const newPhrase = currentPool.splice(index, 1)[0];
+        if (currentPhrase) phraseHistory.push(currentPhrase);
+        currentPhrase = newPhrase;
+        freeText.value = '';
+        $('#phrase-display').textContent = currentPhrase;
+        freeText.placeholder = 'Escribe la frase de arriba...';
+        freeStatus.innerHTML = '';
+        speak('Escribe la frase: ' + currentPhrase);
+      }
+  
+      // =====================================
+      // 8. INITIALIZATION & EVENT LISTENERS
+      // =====================================
+      const largeTextDefault = true;
+      $('#toggle-audio').checked = audioEnabledDefault;
+  
+      btnStartMouse.addEventListener('click', () => { showPracticeView('mouse'); startMouseExercise(); });
+      btnStartKey.addEventListener('click', () => { showPracticeView('key'); prepareKeyExercise(); });
+      btnStartFree.addEventListener('click', () => { showPracticeView('free'); startFreePractice(); });
+      btnHome.addEventListener('click', showMainMenu);
+      btnRepeatAudio.addEventListener('click', () => { if (lastSpokenText) speak(lastSpokenText); });
+  
+      $('#btn-increase-font').addEventListener('click', () => {
+        let newSize = (state.fontSize || 20) + FONT_STEP;
+        if (newSize > MAX_FONT_SIZE) newSize = MAX_FONT_SIZE;
+        state.fontSize = newSize;
+        applyFontSize();
+        saveState();
+        speak(`Tamaño de texto aumentado`);
+      });
+  
+      $('#btn-decrease-font').addEventListener('click', () => {
+        let newSize = (state.fontSize || 20) - FONT_STEP;
+        if (newSize < MIN_FONT_SIZE) newSize = MIN_FONT_SIZE;
+        state.fontSize = newSize;
+        applyFontSize();
+        saveState();
+        speak(`Tamaño de texto reducido`);
+      });
+  
+      const btnColorNormal = $('#color-normal');
+      const btnColorProtanopia = $('#color-protanopia');
+      const btnColorDeuteranopia = $('#color-deuteranopia');
+      const btnColorAcromatopsia = $('#color-acromatopsia');
+      btnColorNormal.addEventListener('click', () => setColorMode('normal'));
+      btnColorProtanopia.addEventListener('click', () => setColorMode('protanopia'));
+      btnColorDeuteranopia.addEventListener('click', () => setColorMode('deuteranopia'));
+      btnColorAcromatopsia.addEventListener('click', () => setColorMode('acromatopsia'));
+  
+      $('#btn-reset').addEventListener('click', resetState);
+      $('#btn-fullscreen-mouse').addEventListener('click', () => {
+        if (mouseBoard.requestFullscreen) mouseBoard.requestFullscreen();
+        else if (mouseBoard.webkitRequestFullscreen) mouseBoard.webkitRequestFullscreen();
+        else if (mouseBoard.msRequestFullscreen) mouseBoard.msRequestFullscreen();
+      });
+  
+      $('#btn-reset-key').addEventListener('click', resetState);
+      $('#btn-skip-free').addEventListener('click', () => { startFreePractice(); });
+      $('#btn-reset-free').addEventListener('click', resetState);
+  
+      document.querySelectorAll('.level-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+              if (!currentPracticeMode || (currentPracticeMode !== 'mouse' && currentPracticeMode !== 'key')) return;
+              const newLevel = parseInt(btn.dataset.level);
+              state[currentPracticeMode].level = newLevel;
+              saveState();
+              updateLevelUI();
+              speak(`Nivel ${newLevel} seleccionado.`);
+              if (currentPracticeMode === 'mouse') {
+                  cleanupMouseHandlers();
+                  startMouseExercise();
+              } else if (currentPracticeMode === 'key') {
+                  prepareKeyExercise();
+              }
+          });
+      });
+  
+      typingInput.addEventListener('keydown', (e) => {
+        if (e.getModifierState && e.getModifierState('CapsLock')) {
+          keyStatus.innerHTML = '<span class="negative">Mayúscula activada.</span>';
+          speak('Mayúscula activada');
+        }
+        const pressed = e.key;
+        if (pressed === expected) {
+          keyStatus.innerHTML = '<span class="positive">' + getRandomFeedback() + '</span>';
+          speak('Correcto');
+          saveState();
+          letterHistory.push(expected);
+          expected = randomLetter();
+          highlightExpected(expected);
+          setTimeout(() => speak('Ahora: ' + getSpokenChar(expected)), 400);
+          e.preventDefault();
+        } else if (e.key.length === 1 && e.key.match(/[a-zA-ZñÑ]/)) {
+          keyStatus.innerHTML = '<span class="negative">Incorrecto. Intenta: ' + expected + '</span>';
+          speak('Esa no es. Intenta de nuevo.');
+        }
+      });
+  
+      keyNext.addEventListener('click', () => { prepareKeyExercise(); });
+  
+      freeText.addEventListener('input', (e) => {
+        const typed = e.target.value;
+        if (typed.length < lastTyped.length) { lastTyped = typed; return; }
+        if (typed === currentPhrase) {
+          freeStatus.innerHTML = '<span class="positive">¡Frase correcta!</span>';
+          speak('Correcto. Pulsa Siguiente para otra frase.');
+        } else if (!currentPhrase.startsWith(typed)) {
+          freeStatus.innerHTML = '<span class="negative">Cuidado, intenta de nuevo.</span>';
+          speak('Intenta de nuevo');
+        }
+        lastTyped = typed;
+      });
+  
+      window.addEventListener('load', () => {
+        document.documentElement.setAttribute('data-theme', state.theme || 'normal');
+        applyFontSize();
+        initSpeech();
+        showMainMenu();
+      });
+  
+      window.addEventListener('beforeunload', saveState);
+    </script>
 </body>
 </html>
