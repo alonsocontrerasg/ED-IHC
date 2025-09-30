@@ -126,6 +126,13 @@
       --success: #00c49a; /* Cyan */
       --error: #ffc107;   /* Yellow */
     }
+    [data-theme="acromatopsia"] {
+      --bg: #222222;
+      --card: #F5F5F5;
+      --accent: #9E9E9E;
+      --success: #4CAF50;
+      --error: #F44336;
+    }
   </style>
 </head>
 <body style="font-size: 20px;">
@@ -170,6 +177,7 @@
         <button id="color-normal" class="btn-secondary btn-interactive">Normal</button>
         <button id="color-protanopia" class="btn-secondary btn-interactive">Protanopia</button>
         <button id="color-deuteranopia" class="btn-secondary btn-interactive">Deuteranopia</button>
+        <button id="color-acromatopsia" class="btn-secondary btn-interactive">Acromatopsia</button>
       </div>
     </section>
 
@@ -219,10 +227,9 @@
               </div>
               <div class="status" id="key-status"></div>
               <div class="key-options" style="margin-top: 12px; display: flex; gap: 16px; justify-content: center; font-size: 18px;">
-                <label><input type="checkbox" id="key-opt-uppercase"> Más mayúsculas</label>
-                <label><input type="checkbox" id="key-opt-special"> Más caracteres especiales</label>
-                <label><input type="checkbox" id="key-opt-accents"> Más tildes</label>
-                <label><input type="checkbox" id="key-opt-numbers"> Más números</label>
+                <label><input type="checkbox" id="key-opt-uppercase"> Mayúsculas</label>
+                <label><input type="checkbox" id="key-opt-accents"> Tildes</label>
+                <label><input type="checkbox" id="key-opt-numbers"> Números</label>
               </div>
               <div class="controls-top">
                 <button id="btn-previous-key" class="btn-secondary big btn-interactive">Anterior</button>
@@ -233,9 +240,10 @@
 
             <div id="stage-free" class="stage hidden center">
               <h2 class="big">Práctica libre</h2>
-              <p style="font-size:20px">Escribe libremente en el cuadro de texto.</p>
+              <p style="font-size:20px">Escribe la frase que aparece debajo en el cuadro de texto:</p>
+              <div id="phrase-display" style="font-size: 28px; color: white; margin-top: 8px; margin-bottom: 16px; min-height: 40px;"></div>
               <div style="margin-top:8px">
-                <textarea id="free-text" rows="8" placeholder="Escribe, prueba mayúsculas, prueba backspace..."></textarea>
+                <textarea id="free-text" rows="8" placeholder="Escribe aquí..."></textarea>
               </div>
               <div class="status" id="free-status"></div>
               <div class="controls-top">
@@ -388,6 +396,7 @@
     const btnColorNormal = $('#color-normal');
     const btnColorProtanopia = $('#color-protanopia');
     const btnColorDeuteranopia = $('#color-deuteranopia');
+    const btnColorAcromatopsia = $('#color-acromatopsia');
 
     function setColorMode(theme) {
       document.documentElement.setAttribute('data-theme', theme);
@@ -398,6 +407,7 @@
     btnColorNormal.addEventListener('click', () => setColorMode('normal'));
     btnColorProtanopia.addEventListener('click', () => setColorMode('protanopia'));
     btnColorDeuteranopia.addEventListener('click', () => setColorMode('deuteranopia'));
+    btnColorAcromatopsia.addEventListener('click', () => setColorMode('acromatopsia'));
 
     function showMainMenu() {
       mainContent.classList.add('hidden');
@@ -547,7 +557,6 @@
       let hard = 'zxcvbnm';
 
       const useUppercase = $('#key-opt-uppercase').checked;
-      const useSpecial = $('#key-opt-special').checked;
       const useAccents = $('#key-opt-accents').checked;
       const useNumbers = $('#key-opt-numbers').checked; // New option
 
@@ -555,10 +564,6 @@
         easy += 'ASDFGHJKLÑ';
         medium += 'QWERTYUIOP';
         hard += 'ZXCVBNM';
-      }
-
-      if (useSpecial) {
-        easy += '#$%()=.,*+@-_';
       }
 
       if (useAccents) {
@@ -578,7 +583,13 @@
         charSet = 'asdfghjklñ';
       }
 
-      return charSet[Math.floor(Math.random() * charSet.length)];
+      let nextLetter;
+      const lastLetter = letterHistory.length > 0 ? letterHistory[letterHistory.length - 1] : null;
+      do {
+        nextLetter = charSet[Math.floor(Math.random() * charSet.length)];
+      } while (charSet.length > 1 && nextLetter === lastLetter);
+
+      return nextLetter;
     }
     function highlightExpected(ch) {
       // Solo mostramos el cuadro con la letra, sin texto adicional
@@ -606,7 +617,24 @@
     });
     keyNext.addEventListener('click', () => { prepareKeyExercise(); });
 
-    const phrases = ['Hola Mundo', 'Me gusta aprender', 'Practicar es clave', 'La vida es bella'];
+    const phrases = [
+      'Hola Mundo', 
+      'Me gusta aprender', 
+      'Practicar es clave', 
+      'La vida es bella',
+      'El sol brilla hoy',
+      'La tecnología nos conecta',
+      'Cada día es una nueva oportunidad',
+      'Aprender a usar el computador es útil',
+      'La paciencia es una virtud',
+      'Disfruta de las pequeñas cosas',
+      // Dificultad aumentada
+      'La Vida Es Un Viaje, No Un Destino',
+      'El Conocimiento Es Poder',
+      'La Imaginación Es Más Importante Que El Saber',
+      'Aprender Es Crecer Cada Día',
+      'Nunca Es Tarde Para Empezar Algo Nuevo'
+    ];
     let currentPhrase = ''; let currentPool = [...phrases]; let phraseHistory = [];
     function startFreePractice() {
       if (currentPool.length === 0) currentPool = [...phrases];
@@ -615,7 +643,8 @@
       if (currentPhrase) phraseHistory.push(currentPhrase);
       currentPhrase = newPhrase;
       freeText.value = '';
-      freeText.placeholder = 'Escribe: ' + currentPhrase;
+      $('#phrase-display').textContent = currentPhrase;
+      freeText.placeholder = 'Escribe la frase de arriba...';
       freeStatus.innerHTML = '';
       speak('Escribe la frase: ' + currentPhrase);
     }
