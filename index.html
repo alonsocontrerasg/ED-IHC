@@ -624,10 +624,10 @@
       function randomLetter() {
         const level = state.key.level || 1;
         let charSet = 'abcdefghijklmnñopqrstuvwxyz';
-        if (level >= 2) charSet += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        if (level >= 3) charSet += 'áéíóúüÁÉÍÓÚÜ';
+        if (level >= 2) charSet += 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ';
+        if (level >= 3) charSet += 'áéíóúÁÉÍÓÚ';
         if (level >= 4) charSet += '0123456789';
-        if (level >= 5) charSet += '.,;:-_¡!¿?@#$%&/()=+*[]{}';
+        if (level >= 5) charSet += '.,;:-_¡!¿?@#$%&/=+*';
         let nextLetter;
         const lastLetter = letterHistory.length > 0 ? letterHistory[letterHistory.length - 1] : null;
         do {
