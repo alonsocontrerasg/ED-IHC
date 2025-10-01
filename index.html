@@ -293,9 +293,13 @@
 
     <script>
       // =====================================
-      // 1. STATE MANAGEMENT
+      // 1. STATE MANAGEMENT & CONSTANTS
       // =====================================
       const STATE_KEY = 'entrenador_progreso_v1';
+      const MIN_FONT_SIZE = 16;
+      const MAX_FONT_SIZE = 28;
+      const FONT_STEP = 2;
+      const audioEnabledDefault = true;
 
       const helpContent = {
         mouse: [
@@ -320,31 +324,31 @@
           'Si todo sale en mayúsculas, revisa la tecla <strong>Bloq Mayús</strong>.'
         ]
       };
-
-      function updateHelp(mode) {
-        const helpList = $('#quick-help-list');
-        const content = helpContent[mode] || helpContent.default;
-        helpList.innerHTML = content.map(item => `<li>${item}</li>`).join('');
-      }
+      
+      const phrases = ['Hola Mundo', 'Me gusta aprender', 'Practicar es clave', 'La vida es bella', 'El sol brilla hoy', 'La tecnología nos conecta', 'Cada día es una nueva oportunidad', 'Aprender a usar el computador es útil', 'La paciencia es una virtud', 'Disfruta de las pequeñas cosas', 'La Vida Es Un Viaje, No Un Destino', 'El Conocimiento Es Poder', 'La Imaginación Es Más Importante Que El Saber', 'Aprender Es Crecer Cada Día', 'Nunca Es Tarde Para Empezar Algo Nuevo'];
+      const positiveFeedback = ['¡Muy bien!', '¡Excelente!', '¡Correcto!', '¡Eso es!', '¡Perfecto!'];
 
       let state = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
       if (!state.mouse) state.mouse = { level: 1 };
       if (!state.key) state.key = { level: 1 };
       if (!state.theme) state.theme = 'normal';
-      if (!state.fontSize) state.fontSize = 20; // Default font size
-  
+      if (!state.fontSize) state.fontSize = 20;
+
       function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+      
       function resetState() { 
           if(confirm('¿Desea reiniciar todo el progreso?')){
-              state = { mouse: { level: 1 }, key: { level: 1 } }; 
+              state = { mouse: { level: 1 }, key: { level: 1 }, theme: state.theme, fontSize: state.fontSize }; 
               saveState(); 
               speak('Progreso reiniciado');
-              if(document.querySelector('#levels-card').classList.contains('hidden') === false) {
+              if(levelsCard.classList.contains('hidden') === false) {
                   updateLevelUI();
+                  if (currentPracticeMode === 'mouse') startMouseExercise();
+                  if (currentPracticeMode === 'key') prepareKeyExercise();
               }
           }
       }
-  
+
       // =====================================
       // 2. DOM ELEMENTS
       // =====================================
@@ -367,14 +371,12 @@
       const btnRepeatAudio = $('#btn-repeat-audio');
       const levelsCard = $('#levels-card');
       const levelCardTitle = $('#level-card-title');
-  
+
       // =====================================
       // 3. SPEECH SYNTHESIS
       // =====================================
-      const audioEnabledDefault = true;
       let lastSpokenText = '';
       let preferredVoice = null;
-      const positiveFeedback = ['¡Muy bien!', '¡Excelente!', '¡Correcto!', '¡Eso es!', '¡Perfecto!'];
   
       function speak(text) {
         const toggle = $('#toggle-audio');
@@ -398,14 +400,8 @@
         const setVoice = () => {
           const voices = speechSynthesis.getVoices();
           const maleVoiceNames = ['Carlos', 'Miguel', 'Pablo', 'Jorge', 'Diego', 'Antonio', 'es-ES-Standard-B', 'es-ES-Neural2-B', 'Microsoft Pablo - Spanish (Spain)', 'Google español'];
-          let voice = null;
-          for (const name of maleVoiceNames) {
-            voice = voices.find(v => v.lang.startsWith('es-') && (v.name.includes(name) || v.name === name));
-            if (voice) break;
-          }
-          if (!voice) {
-            voice = voices.find(v => v.lang.startsWith('es-'));
-          }
+          let voice = voices.find(v => v.lang.startsWith('es-') && maleVoiceNames.some(name => v.name.includes(name) || v.name === name));
+          if (!voice) voice = voices.find(v => v.lang.startsWith('es-'));
           preferredVoice = voice;
         };
         if (speechSynthesis.getVoices().length > 0) {
@@ -420,89 +416,87 @@
   
       function getSpokenChar(char) {
           if (char.length !== 1) return char;
-          const accents = {
-              'á': 'a con tilde', 'é': 'e con tilde', 'í': 'i con tilde', 'ó': 'o con tilde', 'ú': 'u con tilde', 'ü': 'u con diéresis',
-              'Á': 'A con tilde mayúscula', 'É': 'E con tilde mayúscula', 'Í': 'I con tilde mayúscula', 'Ó': 'O con tilde mayúscula', 'Ú': 'U con tilde mayúscula', 'Ü': 'U con diéresis mayúscula'
-          };
+          const accents = { 'á': 'a con tilde', 'é': 'e con tilde', 'í': 'i con tilde', 'ó': 'o con tilde', 'ú': 'u con tilde', 'ü': 'u con diéresis', 'Á': 'A con tilde mayúscula', 'É': 'E con tilde mayúscula', 'Í': 'I con tilde mayúscula', 'Ó': 'O con tilde mayúscula', 'Ú': 'U con tilde mayúscula', 'Ü': 'U con diéresis mayúscula' };
           if (accents[char]) return accents[char];
           if (char === char.toUpperCase() && char.toLowerCase() !== char) return char + ' mayúscula';
-          const specialChars = {
-              '.': 'punto', ',': 'coma', ';': 'punto y coma', ':': 'dos puntos', '-': 'guion', '_': 'guion bajo',
-              '¡': 'signo de exclamación de apertura', '!': 'signo de exclamación',
-              '¿': 'signo de interrogación de apertura', '?': 'signo de interrogación',
-              '@': 'arroba', '#': 'numeral', '$': 'signo de pesos', '%': 'porcentaje', '&': 'y comercial',
-              '/': 'barra', '(': 'paréntesis de apertura', ')': 'paréntesis de cierre',
-              '=': 'signo de igual', '+': 'signo de más', '*': 'asterisco', '[': 'corchete de apertura', ']': 'corchete de cierre',
-              '{': 'llave de apertura', '}': 'llave de cierre'
-          };
+          const specialChars = { '.': 'punto', ',': 'coma', ';': 'punto y coma', ':': 'dos puntos', '-': 'guion', '_': 'guion bajo', '¡': 'signo de exclamación de apertura', '!': 'signo de exclamación', '¿': 'signo de interrogación de apertura', '?': 'signo de interrogación', '@': 'arroba', '#': 'numeral', '$': 'signo de pesos', '%': 'porcentaje', '&': 'y comercial', '/': 'barra', '(': 'paréntesis de apertura', ')': 'paréntesis de cierre', '=': 'signo de igual', '+': 'signo de más', '*': 'asterisco', '[': 'corchete de apertura', ']': 'corchete de cierre', '{': 'llave de apertura', '}': 'llave de cierre' };
           return specialChars[char] || char;
       }
   
       // =====================================
       // 4. CORE APP & UI LOGIC
       // =====================================
-      let currentPracticeMode = ''; // Can be 'mouse' or 'key'
+      let currentPracticeMode = '';
   
-            function showMainMenu() {
-              mainContent.classList.add('hidden');
-              stageWelcome.classList.remove('hidden');
-              btnHome.classList.add('hidden');
-              window.speechSynthesis.cancel();
-              cleanupMouseHandlers();
-              showStage('');
-              updateHelp('default'); // Show default help on main menu
-              speak('Elige un modo de práctica.');
-            }
+      function showMainMenu() {
+        mainContent.classList.add('hidden');
+        stageWelcome.classList.remove('hidden');
+        btnHome.classList.add('hidden');
+        window.speechSynthesis.cancel();
+        cleanupMouseHandlers();
+        showStage('');
+        updateHelp('default');
+        speak('Elige un modo de práctica.');
+      }
       
-            function showPracticeView(mode) {
-              currentPracticeMode = mode;
-              stageWelcome.classList.add('hidden');
-              mainContent.classList.remove('hidden');
-              btnHome.classList.remove('hidden');
-              showStage(mode);
-            }
+      function showPracticeView(mode) {
+        currentPracticeMode = mode;
+        stageWelcome.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+        btnHome.classList.remove('hidden');
+        showStage(mode);
+      }
       
-            function showStage(s) {
-              [stageMouse, stageKey, stageFree].forEach(el => el.classList.add('hidden'));
-              levelsCard.classList.add('hidden');
-              updateHelp(s || 'default'); // Update help based on stage
-              if (s === 'mouse') {
-                stageMouse.classList.remove('hidden');
-                levelsCard.classList.remove('hidden');
-                levelCardTitle.textContent = 'Nivel de Mouse';
-                updateLevelUI();
-              }
-              if (s === 'key') {
-                stageKey.classList.remove('hidden');
-                levelsCard.classList.remove('hidden');
-                levelCardTitle.textContent = 'Nivel de Teclado';
-                updateLevelUI();
-              }
-              if (s === 'free') {
-                stageFree.classList.remove('hidden');
-              }
-            }  
+      function showStage(s) {
+        [stageMouse, stageKey, stageFree].forEach(el => el.classList.add('hidden'));
+        levelsCard.classList.add('hidden');
+        updateHelp(s || 'default');
+        if (s === 'mouse' || s === 'key') {
+            levelsCard.classList.remove('hidden');
+            levelCardTitle.textContent = s === 'mouse' ? 'Nivel de Mouse' : 'Nivel de Teclado';
+            updateLevelUI();
+        }
+        if (s) $(`#stage-${s}`).classList.remove('hidden');
+      }
+
+      function updateHelp(mode) {
+        const helpList = $('#quick-help-list');
+        const content = helpContent[mode] || helpContent.default;
+        helpList.innerHTML = content.map(item => `<li>${item}</li>`).join('');
+      }
+  
       function updateLevelUI() {
-          if (!currentPracticeMode || (currentPracticeMode !== 'mouse' && currentPracticeMode !== 'key')) return;
+          if (!currentPracticeMode || !['mouse', 'key'].includes(currentPracticeMode)) return;
           const currentLevel = state[currentPracticeMode].level || 1;
           document.querySelectorAll('.level-btn').forEach(btn => {
-              if (parseInt(btn.dataset.level) === currentLevel) {
-                  btn.classList.add('btn-primary');
-                  btn.classList.remove('btn-secondary');
-              } else {
-                  btn.classList.add('btn-secondary');
-                  btn.classList.remove('btn-primary');
-              }
+              const isCurrent = parseInt(btn.dataset.level) === currentLevel;
+              btn.classList.toggle('btn-primary', isCurrent);
+              btn.classList.toggle('btn-secondary', !isCurrent);
           });
       }
   
-      const MIN_FONT_SIZE = 16;
-      const MAX_FONT_SIZE = 28;
-      const FONT_STEP = 2;
       function applyFontSize() {
         const size = state.fontSize || 20;
         document.body.style.fontSize = size + 'px';
         document.documentElement.style.setProperty('--large', (size * 1.9) + 'px');
+      }
+
+      function increaseFontSize() {
+        let newSize = (state.fontSize || 20) + FONT_STEP;
+        if (newSize > MAX_FONT_SIZE) newSize = MAX_FONT_SIZE;
+        state.fontSize = newSize;
+        applyFontSize();
+        saveState();
+        speak(`Tamaño de texto aumentado`);
+      }
+
+      function decreaseFontSize() {
+        let newSize = (state.fontSize || 20) - FONT_STEP;
+        if (newSize < MIN_FONT_SIZE) newSize = MIN_FONT_SIZE;
+        state.fontSize = newSize;
+        applyFontSize();
+        saveState();
+        speak(`Tamaño de texto reducido`);
       }
   
       function setColorMode(theme) {
@@ -565,7 +559,7 @@
         saveState();
         e.target.style.background = 'var(--success)';
         cleanupMouseHandlers();
-        setTimeout(() => spawnTarget(), 900);
+        setTimeout(spawnTarget, 900);
       }
   
       function onBoardClick(e) {
@@ -575,17 +569,12 @@
           speak('Apunta al círculo y haz clic.');
           if (mouseAttempts >= 4) {
             mouseStatus.innerHTML = '<span class="negative">Haré el objetivo más grande.</span>';
-            adjustTargetForElder();
+            const newSize = Math.min(200, mouseTarget.offsetWidth * 1.5);
+            mouseTarget.style.width = newSize + 'px';
+            mouseTarget.style.height = newSize + 'px';
+            mouseTarget.style.fontSize = Math.floor(newSize * 0.3) + 'px';
           }
         }
-      }
-  
-      function adjustTargetForElder() {
-        if (!mouseTarget) return;
-        const newSize = Math.min(200, mouseTarget.offsetWidth * 1.5);
-        mouseTarget.style.width = newSize + 'px';
-        mouseTarget.style.height = newSize + 'px';
-        mouseTarget.style.fontSize = Math.floor(newSize * 0.3) + 'px';
       }
   
       function cleanupMouseHandlers() {
@@ -598,17 +587,38 @@
       // =====================================
       let expected = '';
       let letterHistory = [];
-  
-      function buildKeyboardVisual() { /* ... */ }
-      buildKeyboardVisual();
+      let futureLetters = [];
   
       function prepareKeyExercise() {
         typingInput.value = '';
         keyStatus.textContent = '';
-        if (expected) letterHistory.push(expected);
+        letterHistory = [];
+        futureLetters = [];
         expected = randomLetter();
         highlightExpected(expected);
         speak('Presiona la tecla ' + getSpokenChar(expected));
+      }
+
+      function nextKey() {
+        if (expected) letterHistory.push(expected);
+        expected = (futureLetters.length > 0) ? futureLetters.pop() : randomLetter();
+        highlightExpected(expected);
+        speak('Ahora: ' + getSpokenChar(expected));
+        typingInput.value = '';
+        keyStatus.textContent = '';
+      }
+
+      function previousKey() {
+        if (letterHistory.length > 0) {
+          if (expected) futureLetters.push(expected);
+          expected = letterHistory.pop();
+          highlightExpected(expected);
+          speak('Anterior: ' + getSpokenChar(expected));
+          typingInput.value = '';
+          keyStatus.textContent = '';
+        } else {
+          speak('No hay letras anteriores.');
+        }
       }
   
       function randomLetter() {
@@ -627,13 +637,30 @@
       }
   
       function highlightExpected(ch) {
-        $('#key-instruction').innerHTML = '<span class="key-display">' + ch + '</span>';
+        $('#key-instruction').innerHTML = `<span class="key-display">${ch}</span>`;
+      }
+
+      function handleKeyPracticeInput(e) {
+        if (e.getModifierState && e.getModifierState('CapsLock')) {
+          keyStatus.innerHTML = '<span class="negative">Mayúscula activada.</span>';
+          speak('Mayúscula activada');
+        }
+        const pressed = e.key;
+        if (pressed === expected) {
+          keyStatus.innerHTML = `<span class="positive">${getRandomFeedback()}</span>`;
+          speak('Correcto');
+          saveState();
+          setTimeout(nextKey, 400);
+          e.preventDefault();
+        } else if (e.key.length === 1 && /[a-zA-ZñÑ]/.test(e.key)) {
+          keyStatus.innerHTML = `<span class="negative">Incorrecto. Intenta: ${expected}</span>`;
+          speak('Esa no es. Intenta de nuevo.');
+        }
       }
   
       // =====================================
       // 7. FREE PRACTICE EXERCISE
       // =====================================
-      const phrases = ['Hola Mundo', 'Me gusta aprender', 'Practicar es clave', 'La vida es bella', 'El sol brilla hoy', 'La tecnología nos conecta', 'Cada día es una nueva oportunidad', 'Aprender a usar el computador es útil', 'La paciencia es una virtud', 'Disfruta de las pequeñas cosas', 'La Vida Es Un Viaje, No Un Destino', 'El Conocimiento Es Poder', 'La Imaginación Es Más Importante Que El Saber', 'Aprender Es Crecer Cada Día', 'Nunca Es Tarde Para Empezar Algo Nuevo'];
       let currentPhrase = '';
       let currentPool = [...phrases];
       let phraseHistory = [];
@@ -664,99 +691,7 @@
           speak('No hay frases anteriores.');
         }
       }
-  
-      // =====================================
-      // 8. INITIALIZATION & EVENT LISTENERS
-      // =====================================
-      const largeTextDefault = true;
-      $('#toggle-audio').checked = audioEnabledDefault;
-  
-      btnStartMouse.addEventListener('click', () => { showPracticeView('mouse'); startMouseExercise(); });
-      btnStartKey.addEventListener('click', () => { showPracticeView('key'); prepareKeyExercise(); });
-      btnStartFree.addEventListener('click', () => { showPracticeView('free'); startFreePractice(); });
-      btnHome.addEventListener('click', showMainMenu);
-      btnRepeatAudio.addEventListener('click', () => { if (lastSpokenText) speak(lastSpokenText); });
-  
-      $('#btn-increase-font').addEventListener('click', () => {
-        let newSize = (state.fontSize || 20) + FONT_STEP;
-        if (newSize > MAX_FONT_SIZE) newSize = MAX_FONT_SIZE;
-        state.fontSize = newSize;
-        applyFontSize();
-        saveState();
-        speak(`Tamaño de texto aumentado`);
-      });
-  
-      $('#btn-decrease-font').addEventListener('click', () => {
-        let newSize = (state.fontSize || 20) - FONT_STEP;
-        if (newSize < MIN_FONT_SIZE) newSize = MIN_FONT_SIZE;
-        state.fontSize = newSize;
-        applyFontSize();
-        saveState();
-        speak(`Tamaño de texto reducido`);
-      });
-  
-      const btnColorNormal = $('#color-normal');
-      const btnColorProtanopia = $('#color-protanopia');
-      const btnColorDeuteranopia = $('#color-deuteranopia');
-      const btnColorTritanopia = $('#color-tritanopia');
-      const btnColorAcromatopsia = $('#color-acromatopsia');
-      btnColorNormal.addEventListener('click', () => setColorMode('normal'));
-      btnColorProtanopia.addEventListener('click', () => setColorMode('protanopia'));
-      btnColorDeuteranopia.addEventListener('click', () => setColorMode('deuteranopia'));
-      btnColorTritanopia.addEventListener('click', () => setColorMode('tritanopia'));
-      btnColorAcromatopsia.addEventListener('click', () => setColorMode('acromatopsia'));
-  
-      $('#btn-reset').addEventListener('click', resetState);
-      $('#btn-fullscreen-mouse').addEventListener('click', () => {
-        if (mouseBoard.requestFullscreen) mouseBoard.requestFullscreen();
-        else if (mouseBoard.webkitRequestFullscreen) mouseBoard.webkitRequestFullscreen();
-        else if (mouseBoard.msRequestFullscreen) mouseBoard.msRequestFullscreen();
-      });
-  
-      $('#btn-reset-key').addEventListener('click', resetState);
-      $('#btn-previous-free').addEventListener('click', () => { showPreviousPhrase(); });
-      $('#btn-skip-free').addEventListener('click', () => { startFreePractice(); });
-      $('#btn-verify-free').addEventListener('click', () => { verifyPhrase(); });
-      $('#btn-reset-free').addEventListener('click', resetState);
-  
-      document.querySelectorAll('.level-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-              if (!currentPracticeMode || (currentPracticeMode !== 'mouse' && currentPracticeMode !== 'key')) return;
-              const newLevel = parseInt(btn.dataset.level);
-              state[currentPracticeMode].level = newLevel;
-              saveState();
-              updateLevelUI();
-              speak(`Nivel ${newLevel} seleccionado.`);
-              if (currentPracticeMode === 'mouse') {
-                  cleanupMouseHandlers();
-                  startMouseExercise();
-              } else if (currentPracticeMode === 'key') {
-                  prepareKeyExercise();
-              }
-          });
-      });
-  
-      typingInput.addEventListener('keydown', (e) => {
-        if (e.getModifierState && e.getModifierState('CapsLock')) {
-          keyStatus.innerHTML = '<span class="negative">Mayúscula activada.</span>';
-          speak('Mayúscula activada');
-        }
-        const pressed = e.key;
-        if (pressed === expected) {
-          keyStatus.innerHTML = '<span class="positive">' + getRandomFeedback() + '</span>';
-          speak('Correcto');
-          saveState();
-          letterHistory.push(expected);
-          expected = randomLetter();
-          highlightExpected(expected);
-          setTimeout(() => speak('Ahora: ' + getSpokenChar(expected)), 400);
-          e.preventDefault();
-        } else if (e.key.length === 1 && e.key.match(/[a-zA-ZñÑ]/)) {
-          keyStatus.innerHTML = '<span class="negative">Incorrecto. Intenta: ' + expected + '</span>';
-          speak('Esa no es. Intenta de nuevo.');
-        }
-            });
-      
+
       function verifyPhrase() {
         const typed = freeText.value;
         if (typed === currentPhrase) {
@@ -768,7 +703,7 @@
         }
       }
 
-      freeText.addEventListener('input', (e) => {
+      function handleFreePracticeInput(e) {
         const typed = e.target.value;
         if (typed.length < lastTyped.length) {
           lastTyped = typed;
@@ -781,23 +716,83 @@
           freeStatus.innerHTML = '';
         }
         lastTyped = typed;
-      });
-
-      freeText.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          verifyPhrase();
-        }
-      });
+      }
   
-      window.addEventListener('load', () => {
+      // =====================================
+      // 8. INITIALIZATION
+      // =====================================
+      function bindEventListeners() {
+        btnStartMouse.addEventListener('click', () => { showPracticeView('mouse'); startMouseExercise(); });
+        btnStartKey.addEventListener('click', () => { showPracticeView('key'); prepareKeyExercise(); });
+        btnStartFree.addEventListener('click', () => { showPracticeView('free'); startFreePractice(); });
+        btnHome.addEventListener('click', showMainMenu);
+        btnRepeatAudio.addEventListener('click', () => { if (lastSpokenText) speak(lastSpokenText); });
+        
+        $('#btn-increase-font').addEventListener('click', increaseFontSize);
+        $('#btn-decrease-font').addEventListener('click', decreaseFontSize);
+
+        ['normal', 'protanopia', 'deuteranopia', 'tritanopia', 'acromatopsia'].forEach(theme => {
+            $(`#color-${theme}`).addEventListener('click', () => setColorMode(theme));
+        });
+
+        $('#btn-reset').addEventListener('click', resetState);
+        $('#btn-fullscreen-mouse').addEventListener('click', () => {
+            if (mouseBoard.requestFullscreen) mouseBoard.requestFullscreen();
+            else if (mouseBoard.webkitRequestFullscreen) mouseBoard.webkitRequestFullscreen();
+            else if (mouseBoard.msRequestFullscreen) mouseBoard.msRequestFullscreen();
+        });
+
+        $('#btn-previous-key').addEventListener('click', previousKey);
+        $('#btn-skip-key').addEventListener('click', nextKey);
+        $('#btn-reset-key').addEventListener('click', resetState);
+        
+        $('#btn-previous-free').addEventListener('click', showPreviousPhrase);
+        $('#btn-skip-free').addEventListener('click', startFreePractice);
+        $('#btn-verify-free').addEventListener('click', verifyPhrase);
+        $('#btn-reset-free').addEventListener('click', resetState);
+
+        document.querySelectorAll('.level-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!currentPracticeMode || !['mouse', 'key'].includes(currentPracticeMode)) return;
+                const newLevel = parseInt(btn.dataset.level);
+                state[currentPracticeMode].level = newLevel;
+                saveState();
+                updateLevelUI();
+                speak(`Nivel ${newLevel} seleccionado.`);
+                if (currentPracticeMode === 'mouse') {
+                    cleanupMouseHandlers();
+                    startMouseExercise();
+                } else if (currentPracticeMode === 'key') {
+                    prepareKeyExercise();
+                }
+            });
+        });
+
+        typingInput.addEventListener('keydown', handleKeyPracticeInput);
+        freeText.addEventListener('input', handleFreePracticeInput);
+        freeText.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                verifyPhrase();
+            }
+        });
+
+        window.addEventListener('beforeunload', saveState);
+      }
+
+      function init() {
+        $('#toggle-audio').checked = audioEnabledDefault;
         document.documentElement.setAttribute('data-theme', state.theme || 'normal');
         applyFontSize();
         initSpeech();
+        bindEventListeners();
         showMainMenu();
-      });
-  
-      window.addEventListener('beforeunload', saveState);
+        buildKeyboardVisual(); // Placeholder for keyboard visualization
+      }
+      
+      function buildKeyboardVisual() { /* ... */ }
+
+      window.addEventListener('load', init);
     </script>
 </body>
 </html>
