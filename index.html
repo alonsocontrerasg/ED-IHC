@@ -88,6 +88,14 @@
       box-shadow: 0 6px 12px rgba(0,0,0,0.25);
     }
 
+    .phrase-box {
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin: 16px 0;
+    }
+
     .board-menu {
       position: absolute;
       top: 0;
@@ -125,6 +133,13 @@
       --accent: #4F81C7;
       --success: #00c49a; /* Cyan */
       --error: #ffc107;   /* Yellow */
+    }
+    [data-theme="tritanopia"] {
+      --bg: #212121;
+      --card: #F0F0F0;
+      --accent: #E91E63;
+      --success: #FF9800;
+      --error: #C62828;
     }
     [data-theme="acromatopsia"] {
       --bg: #222222;
@@ -177,6 +192,7 @@
         <button id="color-normal" class="btn-secondary btn-interactive">Normal</button>
         <button id="color-protanopia" class="btn-secondary btn-interactive">Protanopia</button>
         <button id="color-deuteranopia" class="btn-secondary btn-interactive">Deuteranopia</button>
+        <button id="color-tritanopia" class="btn-secondary btn-interactive">Tritanopia</button>
         <button id="color-acromatopsia" class="btn-secondary btn-interactive">Acromatopsia</button>
       </div>
     </section>
@@ -220,7 +236,6 @@
               <div style="margin-top:12px">
                 <div style="display:flex;gap:8px;margin-bottom:12px">
                   <div style="flex:1"><input id="typing-input" type="text" placeholder="Escribe aquí" aria-label="Entrada para practicar teclado"></div>
-                  <button id="key-next" class="btn-primary big">Empezar</button>
                 </div>
                 <div class="keyboard" id="keyboard-visual" aria-hidden="true"></div>
               </div>
@@ -235,8 +250,8 @@
 
             <div id="stage-free" class="stage hidden center">
               <h2 class="big">Práctica libre</h2>
-              <p style="font-size:20px">Escribe la frase que aparece debajo en el cuadro de texto:</p>
-              <div id="phrase-display" style="font-size: 28px; color: white; margin-top: 8px; margin-bottom: 16px; min-height: 40px;"></div>
+              <p style="font-size:20px">En el recuadro de texto escribe la siguiente frase:</p>
+              <div id="phrase-display" class="phrase-box" style="font-size: 28px; color: white; min-height: 40px;"></div>
               <div style="margin-top:8px">
                 <textarea id="free-text" rows="8" placeholder="Escribe aquí..."></textarea>
               </div>
@@ -244,6 +259,7 @@
               <div class="controls-top">
                  <button id="btn-previous-free" class="btn-secondary big btn-interactive">Anterior</button>
                  <button id="btn-skip-free" class="btn-secondary big btn-interactive">Siguiente</button>
+                 <button id="btn-verify-free" class="btn-secondary big btn-interactive">Enviar</button>
                  <button id="btn-reset-free" class="btn-secondary big btn-interactive">Reiniciar Progreso</button>
               </div>
             </div>
@@ -252,10 +268,7 @@
           <aside class="right">
             <div class="help">
               <h3 class="big">Ayuda rápida</h3>
-              <ul style="font-size:20px;line-height:1.6">
-                <li>El cursor se mueve cuando mueves el mouse.</li>
-                <li>Para hacer clic, presiona el botón izquierdo del ratón.</li>
-                <li>Si todo sale en mayúsculas, revisa la tecla <strong>Bloq Mayús</strong>.</li>
+              <ul id="quick-help-list" style="font-size:20px;line-height:1.6">
               </ul>
             </div>
             <div id="levels-card" style="margin-top:12px" class="card hidden">
@@ -283,6 +296,37 @@
       // 1. STATE MANAGEMENT
       // =====================================
       const STATE_KEY = 'entrenador_progreso_v1';
+
+      const helpContent = {
+        mouse: [
+          'El cursor sigue el movimiento de tu mouse.',
+          'Para hacer clic, presiona suavemente el botón izquierdo del ratón.',
+          'Apunta con la punta del cursor al centro del objetivo.'
+        ],
+        key: [
+          'Presiona la tecla que se muestra en pantalla.',
+          'Si te equivocas, no pasa nada, solo intenta de nuevo.',
+          'Si todo sale en mayúsculas, revisa la tecla <strong>Bloq Mayús</strong>.'
+        ],
+        free: [
+          'Escribe la frase que ves en el recuadro.',
+          'Usa la tecla de <strong>espacio</strong> para separar las palabras.',
+          'Si te equivocas, puedes usar la tecla de <strong>borrar</strong> para corregir.',
+          'Recuerda fijarte en las letras que están en mayúsculas.'
+        ],
+        default: [
+          'El cursor se mueve cuando mueves el mouse.',
+          'Para hacer clic, presiona el botón izquierdo del ratón.',
+          'Si todo sale en mayúsculas, revisa la tecla <strong>Bloq Mayús</strong>.'
+        ]
+      };
+
+      function updateHelp(mode) {
+        const helpList = $('#quick-help-list');
+        const content = helpContent[mode] || helpContent.default;
+        helpList.innerHTML = content.map(item => `<li>${item}</li>`).join('');
+      }
+
       let state = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
       if (!state.mouse) state.mouse = { level: 1 };
       if (!state.key) state.key = { level: 1 };
@@ -318,7 +362,6 @@
       const mouseStatus = $('#mouse-status');
       const keyStatus = $('#key-status');
       const typingInput = $('#typing-input');
-      const keyNext = $('#key-next');
       const freeText = $('#free-text');
       const freeStatus = $('#free-status');
       const btnRepeatAudio = $('#btn-repeat-audio');
@@ -400,44 +443,45 @@
       // =====================================
       let currentPracticeMode = ''; // Can be 'mouse' or 'key'
   
-      function showMainMenu() {
-        mainContent.classList.add('hidden');
-        stageWelcome.classList.remove('hidden');
-        btnHome.classList.add('hidden');
-        window.speechSynthesis.cancel();
-        cleanupMouseHandlers();
-        showStage('');
-        speak('Elige un modo de práctica.');
-      }
-  
-      function showPracticeView(mode) {
-        currentPracticeMode = mode;
-        stageWelcome.classList.add('hidden');
-        mainContent.classList.remove('hidden');
-        btnHome.classList.remove('hidden');
-        showStage(mode);
-      }
-  
-      function showStage(s) {
-        [stageMouse, stageKey, stageFree].forEach(el => el.classList.add('hidden'));
-        levelsCard.classList.add('hidden');
-        if (s === 'mouse') {
-          stageMouse.classList.remove('hidden');
-          levelsCard.classList.remove('hidden');
-          levelCardTitle.textContent = 'Nivel de Mouse';
-          updateLevelUI();
-        }
-        if (s === 'key') {
-          stageKey.classList.remove('hidden');
-          levelsCard.classList.remove('hidden');
-          levelCardTitle.textContent = 'Nivel de Teclado';
-          updateLevelUI();
-        }
-        if (s === 'free') {
-          stageFree.classList.remove('hidden');
-        }
-      }
-  
+            function showMainMenu() {
+              mainContent.classList.add('hidden');
+              stageWelcome.classList.remove('hidden');
+              btnHome.classList.add('hidden');
+              window.speechSynthesis.cancel();
+              cleanupMouseHandlers();
+              showStage('');
+              updateHelp('default'); // Show default help on main menu
+              speak('Elige un modo de práctica.');
+            }
+      
+            function showPracticeView(mode) {
+              currentPracticeMode = mode;
+              stageWelcome.classList.add('hidden');
+              mainContent.classList.remove('hidden');
+              btnHome.classList.remove('hidden');
+              showStage(mode);
+            }
+      
+            function showStage(s) {
+              [stageMouse, stageKey, stageFree].forEach(el => el.classList.add('hidden'));
+              levelsCard.classList.add('hidden');
+              updateHelp(s || 'default'); // Update help based on stage
+              if (s === 'mouse') {
+                stageMouse.classList.remove('hidden');
+                levelsCard.classList.remove('hidden');
+                levelCardTitle.textContent = 'Nivel de Mouse';
+                updateLevelUI();
+              }
+              if (s === 'key') {
+                stageKey.classList.remove('hidden');
+                levelsCard.classList.remove('hidden');
+                levelCardTitle.textContent = 'Nivel de Teclado';
+                updateLevelUI();
+              }
+              if (s === 'free') {
+                stageFree.classList.remove('hidden');
+              }
+            }  
       function updateLevelUI() {
           if (!currentPracticeMode || (currentPracticeMode !== 'mouse' && currentPracticeMode !== 'key')) return;
           const currentLevel = state[currentPracticeMode].level || 1;
@@ -565,7 +609,6 @@
         expected = randomLetter();
         highlightExpected(expected);
         speak('Presiona la tecla ' + getSpokenChar(expected));
-        keyNext.textContent = 'Siguiente';
       }
   
       function randomLetter() {
@@ -608,6 +651,19 @@
         freeStatus.innerHTML = '';
         speak('Escribe la frase: ' + currentPhrase);
       }
+
+      function showPreviousPhrase() {
+        if (phraseHistory.length > 0) {
+          currentPool.push(currentPhrase);
+          currentPhrase = phraseHistory.pop();
+          freeText.value = '';
+          $('#phrase-display').textContent = currentPhrase;
+          freeStatus.innerHTML = '';
+          speak('Frase anterior: ' + currentPhrase);
+        } else {
+          speak('No hay frases anteriores.');
+        }
+      }
   
       // =====================================
       // 8. INITIALIZATION & EVENT LISTENERS
@@ -642,10 +698,12 @@
       const btnColorNormal = $('#color-normal');
       const btnColorProtanopia = $('#color-protanopia');
       const btnColorDeuteranopia = $('#color-deuteranopia');
+      const btnColorTritanopia = $('#color-tritanopia');
       const btnColorAcromatopsia = $('#color-acromatopsia');
       btnColorNormal.addEventListener('click', () => setColorMode('normal'));
       btnColorProtanopia.addEventListener('click', () => setColorMode('protanopia'));
       btnColorDeuteranopia.addEventListener('click', () => setColorMode('deuteranopia'));
+      btnColorTritanopia.addEventListener('click', () => setColorMode('tritanopia'));
       btnColorAcromatopsia.addEventListener('click', () => setColorMode('acromatopsia'));
   
       $('#btn-reset').addEventListener('click', resetState);
@@ -656,7 +714,9 @@
       });
   
       $('#btn-reset-key').addEventListener('click', resetState);
+      $('#btn-previous-free').addEventListener('click', () => { showPreviousPhrase(); });
       $('#btn-skip-free').addEventListener('click', () => { startFreePractice(); });
+      $('#btn-verify-free').addEventListener('click', () => { verifyPhrase(); });
       $('#btn-reset-free').addEventListener('click', resetState);
   
       document.querySelectorAll('.level-btn').forEach(btn => {
@@ -695,21 +755,39 @@
           keyStatus.innerHTML = '<span class="negative">Incorrecto. Intenta: ' + expected + '</span>';
           speak('Esa no es. Intenta de nuevo.');
         }
-      });
-  
-      keyNext.addEventListener('click', () => { prepareKeyExercise(); });
-  
-      freeText.addEventListener('input', (e) => {
-        const typed = e.target.value;
-        if (typed.length < lastTyped.length) { lastTyped = typed; return; }
+            });
+      
+      function verifyPhrase() {
+        const typed = freeText.value;
         if (typed === currentPhrase) {
           freeStatus.innerHTML = '<span class="positive">¡Frase correcta!</span>';
           speak('Correcto. Pulsa Siguiente para otra frase.');
-        } else if (!currentPhrase.startsWith(typed)) {
-          freeStatus.innerHTML = '<span class="negative">Cuidado, intenta de nuevo.</span>';
-          speak('Intenta de nuevo');
+        } else {
+          freeStatus.innerHTML = '<span class="negative">La frase no es correcta. Intenta de nuevo.</span>';
+          speak('La frase no es correcta. Intenta de nuevo.');
+        }
+      }
+
+      freeText.addEventListener('input', (e) => {
+        const typed = e.target.value;
+        if (typed.length < lastTyped.length) {
+          lastTyped = typed;
+          return;
+        }
+        if (!currentPhrase.startsWith(typed)) {
+          freeStatus.innerHTML = '<span class="negative">Cuidado, vas por mal camino.</span>';
+          speak('Cuidado');
+        } else {
+          freeStatus.innerHTML = '';
         }
         lastTyped = typed;
+      });
+
+      freeText.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          verifyPhrase();
+        }
       });
   
       window.addEventListener('load', () => {
